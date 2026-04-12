@@ -367,6 +367,10 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
         </div>
       </div>
       <div class="form-group">
+        <label class="fl">連絡先メモ（任意）</label>
+        <input type="text" id="f-contact" placeholder="例：〇〇先生・事務室・要メール確認">
+      </div>
+      <div class="form-group">
         <label class="fl">メモ</label>
         <textarea id="f-memo" placeholder="詳細や連絡事項など…"></textarea>
       </div>
@@ -839,6 +843,7 @@ function openModal(id) {
     <div class="d-row"><span class="d-lbl">重要度</span><span class="d-val"><span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span></span></div>
     <div class="d-row"><span class="d-lbl">期限</span><span class="d-val ${dlClass}">${esc(dlLabel)}</span></div>
     <div class="d-row"><span class="d-lbl">発生元</span><span class="d-val">${esc(t.source)}</span></div>
+    ${t.contact ? `<div class="d-row"><span class="d-lbl">連絡先</span><span class="d-val">${esc(t.contact || '')}</span></div>` : ''}
     <div class="d-row"><span class="d-lbl">状態</span><span class="d-val">${esc(t.status)}</span></div>
     <div class="d-row"><span class="d-lbl">作成日時</span><span class="d-val">${formatDateTimeJP(t.createdAt)}</span></div>
     ${t.completedAt ? `<div class="d-row"><span class="d-lbl">完了日時</span><span class="d-val">${formatDateTimeJP(t.completedAt)}</span></div>` : ''}
@@ -871,6 +876,7 @@ function duplicateTask(id) {
   document.getElementById('f-importance').value = t.importance || '中';
   document.getElementById('f-deadline').value   = today();
   document.getElementById('f-source').value     = t.source     || '自分';
+  document.getElementById('f-contact').value    = t.contact    || '';
   document.getElementById('f-memo').value       = t.memo       || '';
   // ② editingId は null のまま
   // ③ モーダルを閉じる
@@ -891,8 +897,9 @@ function startEdit(id) {
   document.getElementById('f-urgency').value = t.urgency || '中';
   document.getElementById('f-importance').value = t.importance || '中';
   document.getElementById('f-deadline').value = t.deadline || '';
-  document.getElementById('f-source').value = t.source || '自分';
-  document.getElementById('f-memo').value = t.memo || '';
+  document.getElementById('f-source').value  = t.source  || '自分';
+  document.getElementById('f-contact').value = t.contact || '';
+  document.getElementById('f-memo').value    = t.memo    || '';
   nav('add');
 }
 
@@ -904,8 +911,9 @@ function resetForm() {
   document.getElementById('f-urgency').value = '中';
   document.getElementById('f-importance').value = '中';
   document.getElementById('f-deadline').value = '';
-  document.getElementById('f-source').value = '自分';
-  document.getElementById('f-memo').value = '';
+  document.getElementById('f-source').value  = '自分';
+  document.getElementById('f-contact').value = '';
+  document.getElementById('f-memo').value    = '';
 }
 
 // ═══════════════════════════════════════════════
@@ -925,6 +933,7 @@ async function saveTask() {
     importance: document.getElementById('f-importance').value,
     deadline:   document.getElementById('f-deadline').value || '',
     source:     document.getElementById('f-source').value,
+    contact:    document.getElementById('f-contact').value.trim(),
     memo:       document.getElementById('f-memo').value.trim(),
     status:     id ? (tasks.find(t=>t.id===id)||{}).status || '未完了' : '未完了',
     createdAt:  id ? (tasks.find(t=>t.id===id)||{}).createdAt || now : now,
