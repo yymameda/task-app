@@ -264,12 +264,12 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .empty p{font-size:15px;line-height:1.6;}
 
 /* ── WALL VIEW ── */
-.wall-section{margin-bottom:16px;}
-.wall-sec-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.wall-sec-badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;}
-.wall-sec-count{font-size:12px;color:var(--muted);font-weight:600;}
+.wall-section{margin-bottom:10px;}
+.wall-sec-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.wall-sec-badge{font-size:10px;font-weight:800;padding:4px 10px;border-radius:20px;}
+.wall-sec-count{font-size:11px;color:var(--muted);font-weight:600;}
 .wall-task-card{
-  background:var(--card);border-radius:10px;padding:10px 14px;margin-bottom:7px;
+  background:var(--card);border-radius:10px;padding:7px 10px;margin-bottom:5px;
   display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);
   border-left:4px solid transparent;
 }
@@ -277,8 +277,8 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .wall-task-card.urg-中{border-left-color:var(--orange);}
 .wall-task-card.urg-低{border-left-color:var(--green);}
 .wall-task-title{
-  font-size:15px;font-weight:600;color:var(--text);
-  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:13px;font-weight:600;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .wall-task-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;}
 #wall-footer{font-size:12px;color:var(--muted);text-align:center;margin-top:20px;cursor:pointer;}
@@ -799,19 +799,25 @@ async function acquireWakeLock() {
   } catch (e) { /* 非対応環境では無視 */ }
 }
 
-function wallTaskCard(t) {
+function wallTaskCard(t, showDate) {
+  const dateHtml = showDate && t.deadline
+    ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(formatDateJP(t.deadline))}</div>`
+    : '';
   return `<div class="wall-task-card urg-${esc(t.urgency)}" onclick="openModal('${esc(t.id)}')">
-    <span class="wall-task-title">${esc(t.title)}</span>
+    <div style="flex:1;overflow:hidden;">
+      <div class="wall-task-title">${esc(t.title)}</div>
+      ${dateHtml}
+    </div>
     <span class="wall-task-badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
   </div>`;
 }
 
-function renderWallSection(sectionId, listId, countId, items) {
+function renderWallSection(sectionId, listId, countId, items, showDate) {
   const section = document.getElementById(sectionId);
   if (!items.length) { section.style.display = 'none'; return; }
   section.style.display = '';
   document.getElementById(countId).textContent = `${items.length}件`;
-  document.getElementById(listId).innerHTML = sortTasks(items).map(wallTaskCard).join('');
+  document.getElementById(listId).innerHTML = sortTasks(items).map(t => wallTaskCard(t, showDate)).join('');
 }
 
 function renderWall() {
@@ -829,10 +835,10 @@ function renderWall() {
   const tomorrowT= active.filter(x => x.deadline === tomorrowStr);
   const weekT    = active.filter(x => x.deadline && x.deadline > tomorrowStr && x.deadline <= we);
 
-  renderWallSection('wall-overdue',  'wall-overdue-list',  'wall-overdue-count',  overdue);
-  renderWallSection('wall-today',    'wall-today-list',    'wall-today-count',    todayT);
-  renderWallSection('wall-tomorrow', 'wall-tomorrow-list', 'wall-tomorrow-count', tomorrowT);
-  renderWallSection('wall-week',     'wall-week-list',     'wall-week-count',     weekT);
+  renderWallSection('wall-overdue',  'wall-overdue-list',  'wall-overdue-count',  overdue,   true);
+  renderWallSection('wall-today',    'wall-today-list',    'wall-today-count',    todayT,    false);
+  renderWallSection('wall-tomorrow', 'wall-tomorrow-list', 'wall-tomorrow-count', tomorrowT, true);
+  renderWallSection('wall-week',     'wall-week-list',     'wall-week-count',     weekT,     true);
 }
 
 function switchTab(tab) {
