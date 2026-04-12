@@ -633,7 +633,10 @@ function today() {
 
 function weekEnd() {
   const d = new Date();
-  d.setDate(d.getDate() + (6 - d.getDay() === -1 ? 6 : 6 - d.getDay()));
+  // 今週の金曜日までの日数: (5 - day + 7) % 7
+  // 日(0)→5, 月(1)→4, 火(2)→3, 水(3)→2, 木(4)→1, 金(5)→0, 土(6)→6(翌週金)
+  const daysToFriday = (5 - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + daysToFriday);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
