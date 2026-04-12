@@ -787,6 +787,8 @@ function nav(view) {
   document.getElementById('view-'+view).classList.add('active');
   document.querySelector(`[data-view="${view}"]`).classList.add('active');
   currentView = view;
+  const saveView = (view === 'add') ? 'dashboard' : view;
+  localStorage.setItem('last_view', saveView);
   if (view === 'dashboard') renderDashboard();
   if (view === 'list')      renderList();
   if (view === 'done')      renderDone();
@@ -1310,7 +1312,8 @@ function registerSW() {
 async function init() {
   await StorageManager.initDB();
   tasks = await StorageManager.getAll();
-  renderDashboard();
+  const lastView = localStorage.getItem('last_view') || 'wall';
+  nav(lastView);
   registerSW();
 
   // Set today as default deadline
