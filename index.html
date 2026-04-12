@@ -264,12 +264,12 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .empty p{font-size:15px;line-height:1.6;}
 
 /* ── WALL VIEW ── */
-.wall-section{margin-bottom:7px;}
-.wall-sec-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
-.wall-sec-badge{font-size:9px;font-weight:800;padding:4px 10px;border-radius:20px;}
-.wall-sec-count{font-size:10px;color:var(--muted);font-weight:600;}
+.wall-section{margin-bottom:5px;}
+.wall-sec-header{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.wall-sec-badge{font-size:8px;font-weight:800;padding:4px 10px;border-radius:20px;}
+.wall-sec-count{font-size:8px;color:var(--muted);font-weight:600;}
 .wall-task-card{
-  background:var(--card);border-radius:10px;padding:5px 8px;margin-bottom:3px;
+  background:var(--card);border-radius:10px;padding:3px 6px;margin-bottom:2px;
   display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);
   border-left:4px solid transparent;
 }
@@ -277,7 +277,7 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .wall-task-card.urg-中{border-left-color:var(--orange);}
 .wall-task-card.urg-低{border-left-color:var(--green);}
 .wall-task-title{
-  font-size:11px;font-weight:600;color:var(--text);
+  font-size:9px;font-weight:600;color:var(--text);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .wall-task-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;}
@@ -801,7 +801,7 @@ async function acquireWakeLock() {
 
 function wallTaskCard(t, showDate) {
   const dateHtml = showDate && t.deadline
-    ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(formatDateJP(t.deadline))}</div>`
+    ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;">${esc(formatDateJP(t.deadline))}</div>`
     : '';
   return `<div class="wall-task-card urg-${esc(t.urgency)}" onclick="openModal('${esc(t.id)}')">
     <div style="flex:1;overflow:hidden;">
