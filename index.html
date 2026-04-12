@@ -1167,6 +1167,7 @@ function exportJSON() {
   const d = new Date();
   const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   downloadFile(JSON.stringify(data, null, 2), `tasks_backup_${stamp}.json`, 'application/json');
+  localStorage.setItem('last_backup_at', new Date().toISOString());
   showToast('JSONファイルをダウンロードしました', 'ok');
 }
 
@@ -1180,6 +1181,7 @@ async function exportEncrypted() {
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
     downloadFile(enc, `tasks_backup_${stamp}.enc`, 'application/octet-stream');
+    localStorage.setItem('last_backup_at', new Date().toISOString());
     showToast('暗号化ファイルをダウンロードしました 🔒', 'ok');
   } catch(e) {
     showToast('暗号化に失敗しました', 'err');
@@ -1283,6 +1285,19 @@ function registerSW() {
   }
 }
 
+function checkBackupReminder() {
+  if (new Date().getDay() !== 5) return;
+  const last = localStorage.getItem('last_backup_at');
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  if (last && new Date(last).getTime() >= sevenDaysAgo) return;
+  const c = document.getElementById('toast-cont');
+  const t = document.createElement('div');
+  t.className = 'toast err';
+  t.textContent = '📦 今週のバックアップを忘れずに！';
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 6000);
+}
+
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
@@ -1301,6 +1316,8 @@ async function init() {
   document.addEventListener('touchmove', (e) => {
     if (e.target === document.body) e.preventDefault();
   }, { passive: false });
+
+  checkBackupReminder();
 }
 
 init();
