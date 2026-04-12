@@ -618,6 +618,7 @@ let currentView = 'dashboard';
 let currentTab  = 'today';
 let editingId   = null;
 let pwdResolve  = null;
+let isDuplicate = false;
 
 // ═══════════════════════════════════════════════
 //  UTILITIES
@@ -712,7 +713,10 @@ function nav(view) {
   if (view === 'list')      renderList();
   if (view === 'done')      renderDone();
   if (view === 'backup')    {}
-  if (view === 'add' && !editingId) resetForm();
+  if (view === 'add' && !editingId) {
+    if (isDuplicate) { isDuplicate = false; }
+    else { resetForm(); }
+  }
 }
 
 function switchTab(tab) {
@@ -840,6 +844,7 @@ function openModal(id) {
     ${t.completedAt ? `<div class="d-row"><span class="d-lbl">完了日時</span><span class="d-val">${formatDateTimeJP(t.completedAt)}</span></div>` : ''}
     ${t.memo ? `<div class="d-lbl" style="margin-top:14px">メモ</div><div class="d-memo">${esc(t.memo)}</div>` : ''}
     <div class="modal-acts">
+      <button class="btn btn-s" style="flex:1" onclick="duplicateTask('${esc(t.id)}')">📋 複製</button>
       <button class="btn btn-s" style="flex:1" onclick="startEdit('${esc(t.id)}')">✏️ 編集</button>
       <button class="btn ${t.status==='完了'?'btn-s':'btn-g'}" style="flex:1" onclick="toggleDone('${esc(t.id)}');closeModal()">
         ${t.status==='完了'?'↩ 未完了に戻す':'✅ 完了'}
@@ -853,6 +858,26 @@ function openModal(id) {
 function closeModal(e) {
   if (e && e.target !== document.getElementById('modal-overlay')) return;
   document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function duplicateTask(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  // ① フォームに元タスクの値をセット（deadline は今日、status はリセット）
+  document.getElementById('form-title').textContent = 'タスクを追加（複製）';
+  document.getElementById('f-edit-id').value = '';       // 新規扱い
+  document.getElementById('f-title').value      = t.title      || '';
+  document.getElementById('f-urgency').value    = t.urgency    || '中';
+  document.getElementById('f-importance').value = t.importance || '中';
+  document.getElementById('f-deadline').value   = today();
+  document.getElementById('f-source').value     = t.source     || '自分';
+  document.getElementById('f-memo').value       = t.memo       || '';
+  // ② editingId は null のまま
+  // ③ モーダルを閉じる
+  document.getElementById('modal-overlay').classList.remove('open');
+  // ④ isDuplicate フラグを立ててから nav → resetForm() をスキップさせる
+  isDuplicate = true;
+  nav('add');
 }
 
 function startEdit(id) {
