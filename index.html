@@ -826,7 +826,7 @@ async function acquireWakeLock() {
 }
 
 function wallTaskCard(t) {
-  return `<div class="wall-task-card urg-${esc(t.urgency)}">
+  return `<div class="wall-task-card urg-${esc(t.urgency)}" onclick="openModal('${esc(t.id)}')">
     <span class="wall-task-title">${esc(t.title)}</span>
     <span class="wall-task-badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
   </div>`;
