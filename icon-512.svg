@@ -1,69 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="bg512" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1A4F63"/>
-      <stop offset="100%" stop-color="#2E8FAD"/>
+      <stop offset="0%" stop-color="#16435A"/>
+      <stop offset="100%" stop-color="#2A7FA0"/>
     </linearGradient>
-    <linearGradient id="penc512" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FFE57F"/>
-      <stop offset="100%" stop-color="#FFB300"/>
+    <linearGradient id="hdr512" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E5A70"/>
+      <stop offset="100%" stop-color="#2D8FA8"/>
     </linearGradient>
+    <linearGradient id="badge512" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#56C25A"/>
+      <stop offset="100%" stop-color="#2E7D32"/>
+    </linearGradient>
+    <clipPath id="clip512">
+      <rect width="100" height="100" rx="22"/>
+    </clipPath>
   </defs>
 
-  <!-- Background rounded square -->
+  <!-- Background -->
   <rect width="100" height="100" rx="22" fill="url(#bg512)"/>
 
-  <!-- Clipboard shadow -->
-  <rect x="16" y="21" width="56" height="66" rx="7" fill="rgba(0,0,0,0.18)"/>
+  <g clip-path="url(#clip512)">
+    <!-- Clipboard shadow -->
+    <rect x="12" y="14" width="62" height="71" rx="7" fill="rgba(0,0,0,0.22)"/>
 
-  <!-- Clipboard body (white paper) -->
-  <rect x="14" y="18" width="56" height="66" rx="7" fill="white"/>
+    <!-- Clipboard body -->
+    <rect x="10" y="12" width="62" height="71" rx="7" fill="white"/>
 
-  <!-- Clip holder at top center -->
-  <rect x="30" y="12" width="24" height="13" rx="5" fill="#78909C"/>
-  <rect x="33" y="14" width="18" height="8" rx="3" fill="#546E7A"/>
+    <!-- Header band -->
+    <rect x="10" y="12" width="62" height="20" rx="7" fill="url(#hdr512)"/>
+    <!-- Square off bottom two corners of header -->
+    <rect x="10" y="23" width="62" height="9" fill="#2D8FA8"/>
 
-  <!-- Divider line under clip -->
-  <line x1="14" y1="29.5" x2="70" y2="29.5" stroke="#ECEFF1" stroke-width="1.5"/>
+    <!-- Title white lines -->
+    <rect x="18" y="17" width="30" height="5.5" rx="2.75" fill="rgba(255,255,255,0.95)"/>
+    <rect x="18" y="25"  width="19" height="4"   rx="2"    fill="rgba(255,255,255,0.5)"/>
 
-  <!-- Row 1 — DONE (blue checkbox + check + grey bar) -->
-  <rect x="21" y="36" width="11" height="11" rx="3" fill="#2D7D9A"/>
-  <polyline points="22.5,41.5 25.5,45 33,37"
-            fill="none" stroke="white" stroke-width="2.3"
-            stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="37" y="38.5" width="27" height="6" rx="3" fill="#90A4AE"/>
+    <!-- Separator -->
+    <line x1="10" y1="32" x2="72" y2="32" stroke="#ECEFF1" stroke-width="1.3"/>
 
-  <!-- Row 2 — DONE -->
-  <rect x="21" y="52" width="11" height="11" rx="3" fill="#2D7D9A"/>
-  <polyline points="22.5,57.5 25.5,61 33,53"
-            fill="none" stroke="white" stroke-width="2.3"
-            stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="37" y="54.5" width="21" height="6" rx="3" fill="#90A4AE"/>
+    <!-- ── Row 1: HIGH priority · DONE ── -->
+    <circle cx="19" cy="42" r="4.5" fill="#EF5350"/>
+    <rect x="28" y="37.5" width="10.5" height="10.5" rx="3" fill="#2D7D9A"/>
+    <polyline points="29.5,42.5 32.5,46.5 38.5,38.5"
+              fill="none" stroke="white" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="43" y="39.5" width="24" height="5.5" rx="2.75" fill="#B0BEC5"/>
 
-  <!-- Row 3 — PENDING (empty checkbox + lighter bar) -->
-  <rect x="21" y="68" width="11" height="11" rx="3"
-        fill="none" stroke="#CFD8DC" stroke-width="2"/>
-  <rect x="37" y="70.5" width="29" height="6" rx="3" fill="#ECEFF1"/>
+    <!-- ── Row 2: MED priority · DONE ── -->
+    <circle cx="19" cy="57" r="4.5" fill="#FFA726"/>
+    <rect x="28" y="52.5" width="10.5" height="10.5" rx="3" fill="#2D7D9A"/>
+    <polyline points="29.5,57.5 32.5,61.5 38.5,53.5"
+              fill="none" stroke="white" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="43" y="54.5" width="18" height="5.5" rx="2.75" fill="#B0BEC5"/>
 
-  <!--
-    Pencil: translate(74,78) rotate(-45)
-    Tip  (y=+18) → world ≈ (86.7, 90.7)   [lower-right corner ✓]
-    Eraser (y=−30) → world ≈ (52.8, 56.8) [overlapping clipboard ✓]
-  -->
-  <g transform="translate(74,78) rotate(-45)">
-    <!-- Eraser (pink) -->
-    <rect x="-5" y="-30" width="10" height="6" rx="2.5" fill="#EF9A9A"/>
-    <!-- Ferrule / metal band (silver) -->
-    <rect x="-5" y="-25" width="10" height="5" fill="#B0BEC5"/>
-    <!-- Body (yellow gradient) -->
-    <rect x="-5" y="-21" width="10" height="29" rx="2" fill="url(#penc512)"/>
-    <!-- Pencil tip — wood -->
-    <polygon points="-5,8 5,8 0,18" fill="#C99A5A"/>
-    <!-- Pencil tip — graphite -->
-    <polygon points="-1.8,14 1.8,14 0,18" fill="#37474F"/>
-    <!-- Shine highlight on body -->
-    <rect x="-2.5" y="-19" width="3.5" height="24" rx="1.5" fill="rgba(255,255,255,0.4)"/>
-    <!-- Right edge shadow for 3D depth -->
-    <line x1="5" y1="-21" x2="5" y2="8" stroke="rgba(0,0,0,0.14)" stroke-width="1.2"/>
+    <!-- ── Row 3: LOW priority · PENDING ── -->
+    <circle cx="19" cy="72" r="4.5" fill="#66BB6A"/>
+    <rect x="28" y="67.5" width="10.5" height="10.5" rx="3"
+          fill="none" stroke="#CFD8DC" stroke-width="2"/>
+    <rect x="43" y="69.5" width="27" height="5.5" rx="2.75" fill="#ECEFF1"/>
+
+    <!-- ── Green completion badge (bottom-right) ── -->
+    <circle cx="75" cy="76" r="20" fill="rgba(0,0,0,0.18)"/>
+    <circle cx="75" cy="75" r="20" fill="url(#badge512)"/>
+    <circle cx="75" cy="75" r="20" fill="none"
+            stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+    <polyline points="64,75 72,83 87,62"
+              fill="none" stroke="white" stroke-width="5.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
