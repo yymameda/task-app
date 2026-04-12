@@ -264,12 +264,6 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .empty p{font-size:15px;line-height:1.6;}
 
 /* ── WALL VIEW ── */
-#wall-header{
-  background:linear-gradient(135deg,#1E5A70,#2D7D9A);
-  padding:28px 24px 20px;border-radius:var(--r);margin-bottom:14px;
-}
-#wall-time{font-size:64px;font-weight:800;color:#fff;letter-spacing:-2px;line-height:1;}
-#wall-date{font-size:18px;color:rgba(255,255,255,.75);margin-top:6px;}
 .wall-section{margin-bottom:16px;}
 .wall-sec-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .wall-sec-badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;}
@@ -431,10 +425,6 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 
   <!-- ⑤ WALL MODE -->
   <div class="view" id="view-wall">
-    <div id="wall-header">
-      <div id="wall-time">--:--</div>
-      <div id="wall-date"></div>
-    </div>
     <div id="wall-overdue" class="wall-section">
       <div class="wall-sec-header">
         <span class="wall-sec-badge" style="background:#991B1B;color:#fff;">⚠ 期限超過</span>
@@ -690,7 +680,6 @@ let currentTab  = 'today';
 let editingId       = null;
 let pwdResolve      = null;
 let isDuplicate     = false;
-let _wallClockTimer = null;
 let _wakeLock       = null;
 
 // ═══════════════════════════════════════════════
@@ -777,9 +766,7 @@ function showToast(msg, type='') {
 //  NAVIGATION
 // ═══════════════════════════════════════════════
 function nav(view) {
-  // 壁紙モードのタイマーと WakeLock を解放
-  clearInterval(_wallClockTimer);
-  _wallClockTimer = null;
+  // WakeLock を解放
   if (_wakeLock) { _wakeLock.release().catch(() => {}); _wakeLock = null; }
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -792,7 +779,7 @@ function nav(view) {
   if (view === 'dashboard') renderDashboard();
   if (view === 'list')      renderList();
   if (view === 'done')      renderDone();
-  if (view === 'wall')      { renderWall(); startWallClock(); acquireWakeLock(); }
+  if (view === 'wall')      { renderWall(); acquireWakeLock(); }
   if (view === 'backup')    {}
   if (view === 'add' && !editingId) {
     if (isDuplicate) { isDuplicate = false; }
@@ -803,19 +790,6 @@ function nav(view) {
 // ═══════════════════════════════════════════════
 //  WALL MODE
 // ═══════════════════════════════════════════════
-function startWallClock() {
-  const DAYS = ['日','月','火','水','木','金','土'];
-  function tick() {
-    const now = new Date();
-    const hh  = String(now.getHours()).padStart(2,'0');
-    const mm  = String(now.getMinutes()).padStart(2,'0');
-    document.getElementById('wall-time').textContent = `${hh}:${mm}`;
-    document.getElementById('wall-date').textContent =
-      `${now.getMonth()+1}月${now.getDate()}日（${DAYS[now.getDay()]}）`;
-  }
-  tick();
-  _wallClockTimer = setInterval(tick, 60000);
-}
 
 async function acquireWakeLock() {
   try {
