@@ -471,6 +471,28 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
     <h1 class="page-title">バックアップ</h1>
 
     <div class="bk-sec">
+      <h3>AI振り返り</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+        完了タスクの傾向を分析し、来月の業務予測とアドバイスを生成します。<br>
+        ※タイトル・連絡先などの個人情報はAPIに送信されません。
+      </p>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="fl">Anthropic APIキー</label>
+        <input type="password" id="ai-api-key" placeholder="sk-ant-..." autocomplete="off"
+          oninput="localStorage.setItem('anthropic_api_key', this.value)">
+      </div>
+      <button class="btn btn-p btn-w" onclick="requestAIReview()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        📊 AIに月次振り返りを依頼
+      </button>
+      <div id="ai-review-result" style="display:none;margin-top:16px;"></div>
+    </div>
+
+    <div class="bk-sec">
       <h3>エクスポート</h3>
       <button class="btn btn-s btn-w" onclick="exportJSON()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -793,7 +815,10 @@ function nav(view) {
   if (view === 'list')      renderList();
   if (view === 'done')      renderDone();
   if (view === 'wall')      { renderWall(); startWallClock(); acquireWakeLock(); }
-  if (view === 'backup')    {}
+  if (view === 'backup') {
+    const k = localStorage.getItem('anthropic_api_key') || '';
+    document.getElementById('ai-api-key').value = k;
+  }
   if (view === 'add' && !editingId) {
     if (isDuplicate) { isDuplicate = false; }
     else { resetForm(); }
@@ -1295,6 +1320,132 @@ function askPassword(title, desc) {
     inp.onkeydown = (e) => { if (e.key === 'Enter') confirmPwd(); };
     setTimeout(() => inp.focus(), 100);
   });
+}
+
+// ═══════════════════════════════════════════════
+//  AI MONTHLY REVIEW
+// ═══════════════════════════════════════════════
+async function requestAIReview() {
+  const done = tasks.filter(x => x.status === '完了');
+
+  if (done.length < 3) {
+    showToast('完了タスクが3件以上必要です', 'err');
+    return;
+  }
+
+  const apiKey = localStorage.getItem('anthropic_api_key') || '';
+  if (!apiKey.startsWith('sk-ant-')) {
+    showToast('APIキーを入力してください（sk-ant-…）', 'err');
+    return;
+  }
+
+  // タイトル・連絡先を除いた匿名データのみ生成
+  const anonymized = done.map(t => ({
+    source:         t.source      || '不明',
+    urgency:        t.urgency     || '中',
+    importance:     t.importance  || '中',
+    deadline:       t.deadline    || null,
+    createdAt:      t.createdAt   ? t.createdAt.slice(0, 10)   : null,
+    completedAt:    t.completedAt ? t.completedAt.slice(0, 10) : null,
+    daysToComplete: (t.createdAt && t.completedAt)
+                      ? Math.round((new Date(t.completedAt) - new Date(t.createdAt)) / 86400000)
+                      : null,
+    wasOverdue:     (t.deadline && t.completedAt)
+                      ? t.completedAt.slice(0, 10) > t.deadline
+                      : false
+  }));
+
+  const now       = new Date();
+  const thisMonth = `${now.getFullYear()}年${now.getMonth() + 1}月`;
+  const nextMonth = `${now.getFullYear()}年${now.getMonth() + 2}月`;
+
+  // ローディング表示
+  const resultEl = document.getElementById('ai-review-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `
+    <div style="text-align:center;padding:24px;color:var(--muted);">
+      <div style="font-size:24px;margin-bottom:8px;">⏳</div>
+      <div style="font-size:14px;">AIが分析中です...</div>
+    </div>
+  `;
+
+  const systemPrompt = `あなたは小学校5年生の担任教員のタスク管理をサポートするアシスタントです。
+教員の業務特性（授業・保護者対応・校務分掌・行事準備）を理解したうえで、
+完了タスクの統計データを分析し、実用的なアドバイスを提供してください。
+タイトルなどの個人情報は含まれていません。発生元・緊急度・重要度・期限・所要日数のみです。
+回答は日本語で、箇条書きと絵文字を使って読みやすく、300字以内で簡潔にまとめてください。`;
+
+  const userPrompt = `以下は${thisMonth}の完了タスクデータです（${done.length}件）。
+
+${JSON.stringify(anonymized, null, 2)}
+
+以下の2点を分析してください：
+
+【今月の傾向】
+・発生元の内訳と特徴
+・期限超過の件数と傾向
+・所要日数の平均と気になる点
+
+【${nextMonth}への提案】
+・今のデータから予測される来月の業務の山
+・今月の反省を活かした具体的な行動提案（2〜3点）`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':    'application/json',
+        'x-api-key':       apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model:      'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system:     systemPrompt,
+        messages:   [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const msg = data.error?.message || `APIエラー (${response.status})`;
+      throw new Error(msg);
+    }
+
+    const text = data.content?.[0]?.text || 'AIからの応答を取得できませんでした。';
+
+    const html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+
+    resultEl.innerHTML = `
+      <div style="
+        background:#F8FAFC;border-radius:12px;padding:16px;
+        border:1px solid var(--border);font-size:14px;
+        line-height:1.8;color:var(--text);
+      ">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);
+          margin-bottom:10px;letter-spacing:.5px;">
+          📊 AI振り返りレポート
+        </div>
+        ${html}
+      </div>
+      <button class="btn btn-s btn-w" style="margin-top:10px;"
+        onclick="document.getElementById('ai-review-result').style.display='none'">
+        閉じる
+      </button>
+    `;
+  } catch(e) {
+    resultEl.innerHTML = `
+      <div style="background:#FEE2E2;border-radius:12px;padding:16px;
+        font-size:14px;color:#991B1B;">
+        ⚠ ${esc(e.message || '通信エラーが発生しました。ネットワーク接続を確認してください。')}
+      </div>
+    `;
+  }
 }
 
 // ═══════════════════════════════════════════════
