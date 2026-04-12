@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="タスク管理">
+<meta name="theme-color" content="#1E5A70">
+<title>先生のタスク管理</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --primary: #2D7D9A;
+  --primary-dark: #1E5A70;
+  --primary-light: #3D9DBF;
+  --sidebar-w: 64px;
+  --bg: #F0F4F8;
+  --card: #FFFFFF;
+  --text: #1A2B3C;
+  --muted: #6B7C8D;
+  --border: #DDE3E9;
+  --red: #E53E3E;
+  --orange: #DD6B20;
+  --green: #38A169;
+  --shadow: 0 2px 10px rgba(0,0,0,0.09);
+  --r: 12px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+  background:var(--bg);color:var(--text);
+  display:flex;height:100vh;height:100dvh;
+  overflow:hidden;
+}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:linear-gradient(180deg,#1E5A70 0%,#2D7D9A 100%);
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px 0 calc(16px + var(--safe-bottom)) 0;gap:6px;
+  z-index:100;flex-shrink:0;
+}
+.sb-logo{
+  width:42px;height:42px;background:rgba(255,255,255,0.2);border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin-bottom:10px;flex-shrink:0;
+}
+.nav-btn{
+  width:50px;height:52px;border:none;background:transparent;border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;color:rgba(255,255,255,0.65);transition:background .2s,color .2s;
+  gap:3px;padding:0;flex-shrink:0;
+}
+.nav-btn:active{background:rgba(255,255,255,0.15);}
+.nav-btn.active{background:rgba(255,255,255,0.22);color:#fff;}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.nav-btn span{font-size:9px;font-weight:700;letter-spacing:.3px;line-height:1;}
+
+/* ── MAIN ── */
+#main{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding:24px 20px calc(32px + var(--safe-bottom)) 20px;
+  min-width:0;
+}
+.view{display:none;animation:fadeIn .2s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── PAGE TITLE ── */
+.page-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:20px;letter-spacing:-.3px;}
+
+/* ── STAT CARDS ── */
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.stat-card{
+  background:var(--card);border-radius:var(--r);padding:18px 14px;
+  box-shadow:var(--shadow);text-align:center;
+}
+.stat-num{font-size:38px;font-weight:800;color:var(--primary);line-height:1.1;}
+.stat-num.red{color:var(--red);}
+.stat-label{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600;}
+
+/* ── SECTION HEADER ── */
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+.sec-title{font-size:15px;font-weight:700;color:var(--text);}
+
+/* ── TASK ITEM ── */
+.task-item{
+  background:var(--card);border-radius:var(--r);padding:13px 14px;
+  box-shadow:var(--shadow);margin-bottom:9px;
+  display:flex;align-items:flex-start;gap:11px;
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+  border-left:4px solid transparent;
+}
+.task-item:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.task-item.urg-高{border-left-color:var(--red);}
+.task-item.urg-中{border-left-color:var(--orange);}
+.task-item.urg-低{border-left-color:var(--green);}
+.task-item.done-item{opacity:.55;}
+
+.t-check{
+  width:24px;height:24px;min-width:24px;border:2.5px solid var(--border);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;
+  transition:background .2s,border-color .2s;cursor:pointer;
+}
+.t-check.checked{background:var(--primary);border-color:var(--primary);}
+.t-check.checked::after{
+  content:'';width:11px;height:7px;
+  border-left:2.5px solid #fff;border-bottom:2.5px solid #fff;
+  transform:rotate(-45deg) translateY(-1.5px);display:block;
+}
+.t-body{flex:1;min-width:0;}
+.t-title{
+  font-size:15px;font-weight:600;color:var(--text);
+  margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.done-item .t-title{text-decoration:line-through;color:var(--muted);}
+.t-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.bu-高{background:#FEE2E2;color:#9B1C1C;}
+.bu-中{background:#FEF3C7;color:#78350F;}
+.bu-低{background:#DCFCE7;color:#14532D;}
+.bi-高{background:#EDE9FE;color:#4C1D95;}
+.bi-中{background:#E0F2FE;color:#0C4A6E;}
+.bi-低{background:#F1F5F9;color:#334155;}
+.bs{background:#F0FDF4;color:#14532D;}
+.t-dl{font-size:12px;color:var(--muted);}
+.t-dl.ov{color:var(--red);font-weight:700;}
+.t-dl.td{color:var(--orange);font-weight:700;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:4px;background:#E2E8F0;padding:4px;border-radius:11px;margin-bottom:14px;}
+.tab-btn{
+  flex:1;padding:9px 4px;border:none;background:transparent;border-radius:8px;
+  font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;transition:background .2s,color .2s;
+  font-family:inherit;
+}
+.tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 5px rgba(0,0,0,.09);}
+
+/* ── FORM ── */
+.card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);}
+.form-group{margin-bottom:15px;}
+label.fl{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.3px;}
+input[type=text],input[type=date],input[type=password],select,textarea{
+  width:100%;padding:12px 14px;
+  border:2px solid var(--border);border-radius:10px;
+  font-size:15px;font-family:inherit;color:var(--text);background:#fff;
+  outline:none;transition:border-color .2s;
+  -webkit-appearance:none;appearance:none;
+}
+input[type=date]{-webkit-appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);}
+textarea{min-height:90px;resize:vertical;line-height:1.5;}
+.sel-wrap{position:relative;}
+.sel-wrap::after{
+  content:'▾';position:absolute;right:13px;top:50%;transform:translateY(-50%);
+  color:var(--muted);pointer-events:none;font-size:13px;
+}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:13px 20px;border:none;border-radius:11px;
+  font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;
+  transition:opacity .2s,transform .15s;
+}
+.btn:active{opacity:.82;transform:scale(.97);}
+.btn-p{background:linear-gradient(135deg,#2D7D9A,#1E5A70);color:#fff;box-shadow:0 3px 12px rgba(30,90,112,.35);}
+.btn-s{background:#E8EDF2;color:var(--text);}
+.btn-d{background:#FEE2E2;color:#991B1B;}
+.btn-g{background:#DCFCE7;color:#14532D;}
+.btn-w{width:100%;margin-bottom:10px;}
+
+/* ── MODAL ── */
+#modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(15,30,45,.55);z-index:500;
+  align-items:flex-end;justify-content:center;
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+}
+#modal-overlay.open{display:flex;}
+#modal{
+  background:#fff;border-radius:22px 22px 0 0;
+  width:100%;max-width:700px;
+  max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:20px 22px calc(28px + var(--safe-bottom)) 22px;
+  animation:slideUp .28s cubic-bezier(.2,.8,.4,1);
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:38px;height:4px;background:#DDE3E9;border-radius:2px;margin:0 auto 18px;}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.modal-title{font-size:17px;font-weight:800;}
+.modal-x{
+  width:30px;height:30px;border:none;background:#EEF2F7;border-radius:50%;
+  font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);
+}
+
+/* ── DETAIL ROWS ── */
+.d-row{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border);}
+.d-row:last-child{border-bottom:none;}
+.d-lbl{font-size:13px;color:var(--muted);font-weight:600;}
+.d-val{font-size:14px;color:var(--text);text-align:right;max-width:62%;word-break:break-word;}
+.d-memo{font-size:14px;color:var(--text);line-height:1.6;margin-top:6px;padding:10px;background:#F8FAFC;border-radius:8px;white-space:pre-wrap;}
+.modal-acts{display:flex;gap:10px;margin-top:18px;}
+
+/* ── PASSWORD DIALOG ── */
+#pwd-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(15,30,45,.6);z-index:600;
+  align-items:center;justify-content:center;padding:20px;
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+}
+#pwd-overlay.open{display:flex;}
+#pwd-dialog{
+  background:#fff;border-radius:18px;padding:26px 22px;
+  width:100%;max-width:360px;
+  animation:fadeIn .2s ease;
+}
+#pwd-dialog h3{font-size:17px;font-weight:800;margin-bottom:6px;}
+#pwd-dialog p{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5;}
+.pwd-acts{display:flex;gap:10px;margin-top:14px;}
+
+/* ── TOAST ── */
+#toast-cont{
+  position:fixed;bottom:calc(24px + var(--safe-bottom));left:50%;
+  transform:translateX(-50%);z-index:900;
+  display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;
+}
+.toast{
+  background:#1A2B3C;color:#fff;padding:11px 22px;border-radius:24px;
+  font-size:14px;font-weight:600;white-space:nowrap;
+  animation:tIn .28s ease,tOut .28s ease 2.2s forwards;
+  box-shadow:0 4px 18px rgba(0,0,0,.22);
+}
+.toast.ok{background:#14532D;}
+.toast.err{background:#991B1B;}
+@keyframes tIn{from{opacity:0;transform:translateY(14px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes tOut{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(.9)}}
+
+/* ── COMPLETED VIEW ── */
+.done-card{
+  background:var(--card);border-radius:var(--r);padding:13px 15px;
+  box-shadow:var(--shadow);margin-bottom:9px;
+}
+.done-title{font-size:14px;font-weight:600;color:var(--muted);text-decoration:line-through;margin-bottom:5px;}
+.done-meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ── BACKUP VIEW ── */
+.bk-sec{margin-bottom:26px;}
+.bk-sec h3{font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.file-input-wrap{position:relative;overflow:hidden;}
+.file-input-wrap input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:100px;}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:52px 20px;color:var(--muted);}
+.empty .ei{font-size:52px;margin-bottom:12px;}
+.empty p{font-size:15px;line-height:1.6;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#CBD5E0;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-logo">📋</div>
+  <button class="nav-btn active" data-view="dashboard" onclick="nav('dashboard')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>ホーム</span>
+  </button>
+  <button class="nav-btn" data-view="add" onclick="nav('add')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>追加</span>
+  </button>
+  <button class="nav-btn" data-view="list" onclick="nav('list')">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+    <span>一覧</span>
+  </button>
+  <button class="nav-btn" data-view="done" onclick="nav('done')">
+    <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span>完了</span>
+  </button>
+  <button class="nav-btn" data-view="backup" onclick="nav('backup')">
+    <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.52"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 15"/></svg>
+    <span>バック</span>
+  </button>
+</nav>
+
+<!-- MAIN -->
+<main id="main">
+
+  <!-- ① DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <h1 class="page-title">ダッシュボード</h1>
+    <div class="card-grid">
+      <div class="stat-card">
+        <div class="stat-num red" id="stat-today">0</div>
+        <div class="stat-label">今日締切</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-week">0</div>
+        <div class="stat-label">今週締切</div>
+      </div>
+    </div>
+    <div class="sec-header">
+      <span class="sec-title">優先タスク</span>
+      <span id="dash-total" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div id="dash-list"></div>
+  </div>
+
+  <!-- ② TASK ADD -->
+  <div class="view" id="view-add">
+    <h1 class="page-title" id="form-title">タスクを追加</h1>
+    <div class="card">
+      <div class="form-group">
+        <label class="fl">タイトル <span style="color:var(--red)">*</span></label>
+        <input type="text" id="f-title" placeholder="例：家庭訪問の日程調整">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="fl">緊急度</label>
+          <div class="sel-wrap">
+            <select id="f-urgency">
+              <option value="高">🔴 高</option>
+              <option value="中" selected>🟡 中</option>
+              <option value="低">🟢 低</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="fl">重要度</label>
+          <div class="sel-wrap">
+            <select id="f-importance">
+              <option value="高">⭐ 高</option>
+              <option value="中" selected>📌 中</option>
+              <option value="低">📎 低</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="fl">期限</label>
+          <input type="date" id="f-deadline">
+        </div>
+        <div class="form-group">
+          <label class="fl">発生元</label>
+          <div class="sel-wrap">
+            <select id="f-source">
+              <option value="自分">自分</option>
+              <option value="児童">児童</option>
+              <option value="保護者">保護者</option>
+              <option value="管理職">管理職</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="fl">メモ</label>
+        <textarea id="f-memo" placeholder="詳細や連絡事項など…"></textarea>
+      </div>
+      <input type="hidden" id="f-edit-id">
+      <button class="btn btn-p btn-w" onclick="saveTask()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        保存する
+      </button>
+    </div>
+  </div>
+
+  <!-- ③ TASK LIST -->
+  <div class="view" id="view-list">
+    <h1 class="page-title">タスク一覧</h1>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="today" onclick="switchTab('today')">今日</button>
+      <button class="tab-btn" data-tab="week" onclick="switchTab('week')">今週</button>
+      <button class="tab-btn" data-tab="future" onclick="switchTab('future')">いつか</button>
+    </div>
+    <div id="list-container"></div>
+  </div>
+
+  <!-- ④ COMPLETED -->
+  <div class="view" id="view-done">
+    <h1 class="page-title">完了済み</h1>
+    <div id="done-list"></div>
+  </div>
+
+  <!-- ⑤ BACKUP -->
+  <div class="view" id="view-backup">
+    <h1 class="page-title">バックアップ</h1>
+
+    <div class="bk-sec">
+      <h3>エクスポート</h3>
+      <button class="btn btn-s btn-w" onclick="exportJSON()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        JSONで保存（平文）
+      </button>
+      <button class="btn btn-p btn-w" onclick="exportEncrypted()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        AES-GCM暗号化して保存（.enc）
+      </button>
+    </div>
+
+    <div class="bk-sec">
+      <h3>インポート</h3>
+      <div class="file-input-wrap">
+        <button class="btn btn-s btn-w">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          JSONファイルを復元
+        </button>
+        <input type="file" accept=".json,application/json" onchange="importJSON(event)">
+      </div>
+      <div class="file-input-wrap">
+        <button class="btn btn-s btn-w" style="margin-top:0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          暗号化ファイルを復元（.enc）
+        </button>
+        <input type="file" accept=".enc" onchange="importEncrypted(event)">
+      </div>
+    </div>
+
+    <div class="bk-sec">
+      <h3>データ管理</h3>
+      <button class="btn btn-d btn-w" onclick="clearAllData()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        全データを削除
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<!-- TASK DETAIL/EDIT MODAL -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <div class="modal-handle"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- PASSWORD DIALOG -->
+<div id="pwd-overlay">
+  <div id="pwd-dialog">
+    <h3 id="pwd-title">パスワードを入力</h3>
+    <p id="pwd-desc">バックアップファイルを暗号化するためのパスワードを設定してください。</p>
+    <div class="form-group">
+      <input type="password" id="pwd-input" placeholder="パスワード（8文字以上推奨）" autocomplete="current-password">
+    </div>
+    <div class="pwd-acts">
+      <button class="btn btn-s" style="flex:1" onclick="cancelPwd()">キャンセル</button>
+      <button class="btn btn-p" style="flex:2" onclick="confirmPwd()">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-cont"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+//  STORAGE MANAGER (IndexedDB + localStorage)
+// ═══════════════════════════════════════════════
+const StorageManager = (() => {
+  const DB_NAME = 'TeacherTasksDB';
+  const DB_VER  = 1;
+  const STORE   = 'tasks';
+  const LS_KEY  = 'teacher_tasks_v1';
+  let _db = null;
+
+  function initDB() {
+    return new Promise((resolve) => {
+      if (!window.indexedDB) { resolve(false); return; }
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains(STORE))
+          d.createObjectStore(STORE, { keyPath: 'id' });
+      };
+      req.onsuccess = (e) => { _db = e.target.result; resolve(true); };
+      req.onerror   = ()  => resolve(false);
+    });
+  }
+
+  function getAll() {
+    if (_db) return new Promise((res) => {
+      const r = _db.transaction(STORE,'readonly').objectStore(STORE).getAll();
+      r.onsuccess = () => res(r.result || []);
+      r.onerror   = () => res(lsGetAll());
+    });
+    return Promise.resolve(lsGetAll());
+  }
+
+  function save(task) {
+    if (_db) return new Promise((res) => {
+      const r = _db.transaction(STORE,'readwrite').objectStore(STORE).put(task);
+      r.onsuccess = () => res(true);
+      r.onerror   = () => { lsSave(task); res(true); };
+    });
+    lsSave(task);
+    return Promise.resolve(true);
+  }
+
+  function remove(id) {
+    if (_db) return new Promise((res) => {
+      const r = _db.transaction(STORE,'readwrite').objectStore(STORE).delete(id);
+      r.onsuccess = () => res(true);
+      r.onerror   = () => { lsRemove(id); res(true); };
+    });
+    lsRemove(id);
+    return Promise.resolve(true);
+  }
+
+  function clear() {
+    if (_db) return new Promise((res) => {
+      const r = _db.transaction(STORE,'readwrite').objectStore(STORE).clear();
+      r.onsuccess = () => res(true);
+      r.onerror   = () => res(false);
+    });
+    localStorage.removeItem(LS_KEY);
+    return Promise.resolve(true);
+  }
+
+  function lsGetAll() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function lsSave(task) {
+    const tasks = lsGetAll();
+    const i = tasks.findIndex(t => t.id === task.id);
+    if (i >= 0) tasks[i] = task; else tasks.push(task);
+    localStorage.setItem(LS_KEY, JSON.stringify(tasks));
+  }
+  function lsRemove(id) {
+    localStorage.setItem(LS_KEY, JSON.stringify(lsGetAll().filter(t => t.id !== id)));
+  }
+
+  return { initDB, getAll, save, remove, clear };
+})();
+
+// ═══════════════════════════════════════════════
+//  CRYPTO MANAGER (AES-GCM 256-bit)
+// ═══════════════════════════════════════════════
+const CryptoManager = (() => {
+  const ENC = new TextEncoder();
+  const DEC = new TextDecoder();
+
+  function toB64(buf) {
+    let s = '';
+    const u = new Uint8Array(buf);
+    for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]);
+    return btoa(s);
+  }
+  function fromB64(b64) {
+    const s = atob(b64);
+    const u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+    return u;
+  }
+
+  async function deriveKey(password, salt) {
+    const km = await crypto.subtle.importKey(
+      'raw', ENC.encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name:'PBKDF2', salt, iterations:210000, hash:'SHA-256' },
+      km,
+      { name:'AES-GCM', length:256 },
+      false, ['encrypt','decrypt']
+    );
+  }
+
+  async function encrypt(data, password) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await deriveKey(password, salt);
+    const ct   = await crypto.subtle.encrypt(
+      { name:'AES-GCM', iv },
+      key,
+      ENC.encode(JSON.stringify(data))
+    );
+    const combined = new Uint8Array(16 + 12 + ct.byteLength);
+    combined.set(salt, 0);
+    combined.set(iv,  16);
+    combined.set(new Uint8Array(ct), 28);
+    return toB64(combined);
+  }
+
+  async function decrypt(b64Data, password) {
+    const combined = fromB64(b64Data);
+    const salt = combined.slice(0, 16);
+    const iv   = combined.slice(16, 28);
+    const ct   = combined.slice(28);
+    const key  = await deriveKey(password, salt);
+    const pt   = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, ct);
+    return JSON.parse(DEC.decode(pt));
+  }
+
+  return { encrypt, decrypt };
+})();
+
+// ═══════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════
+let tasks = [];
+let currentView = 'dashboard';
+let currentTab  = 'today';
+let editingId   = null;
+let pwdResolve  = null;
+
+// ═══════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function weekEnd() {
+  const d = new Date();
+  d.setDate(d.getDate() + (6 - d.getDay() === -1 ? 6 : 6 - d.getDay()));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateJP(s) {
+  if (!s) return '';
+  const [y,m,d] = s.split('-');
+  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
+}
+
+function formatDateTimeJP(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function daysDiff(from, to) {
+  const a = new Date(from), b = new Date(to);
+  return Math.round((b - a) / 86400000);
+}
+
+function urgScore(u)  { return u==='高'?0:u==='中'?1:2; }
+function impScore(i)  { return i==='高'?0:i==='中'?1:2; }
+function totalScore(t){ return urgScore(t.urgency)*3 + impScore(t.importance); }
+
+function sortTasks(arr) {
+  return [...arr].sort((a, b) => totalScore(a) - totalScore(b));
+}
+
+function deadlineClass(dl) {
+  if (!dl) return '';
+  const t = today();
+  if (dl < t) return 'ov';
+  if (dl === t) return 'td';
+  return '';
+}
+
+function deadlineLabel(dl) {
+  if (!dl) return '';
+  const t = today();
+  if (dl < t) return `⚠ 期限超過 (${formatDateJP(dl)})`;
+  if (dl === t) return `⏰ 今日 (${formatDateJP(dl)})`;
+  const diff = daysDiff(t, dl);
+  return `📅 ${formatDateJP(dl)}（あと${diff}日）`;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function showToast(msg, type='') {
+  const c = document.getElementById('toast-cont');
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' '+type : '');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 2700);
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function nav(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelector(`[data-view="${view}"]`).classList.add('active');
+  currentView = view;
+  if (view === 'dashboard') renderDashboard();
+  if (view === 'list')      renderList();
+  if (view === 'done')      renderDone();
+  if (view === 'backup')    {}
+  if (view === 'add' && !editingId) resetForm();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  renderList();
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard() {
+  const t = today(), we = weekEnd();
+  const active = tasks.filter(x => x.status !== '完了');
+  const todayTasks = active.filter(x => x.deadline && x.deadline <= t);
+  const weekTasks  = active.filter(x => x.deadline && x.deadline > t && x.deadline <= we);
+
+  document.getElementById('stat-today').textContent = todayTasks.length;
+  document.getElementById('stat-week').textContent  = weekTasks.length;
+
+  const sorted = sortTasks(active);
+  const el = document.getElementById('dash-list');
+  document.getElementById('dash-total').textContent = `全${active.length}件`;
+
+  if (!sorted.length) {
+    el.innerHTML = `<div class="empty"><div class="ei">🎉</div><p>未完了のタスクはありません</p></div>`;
+    return;
+  }
+  el.innerHTML = sorted.slice(0, 20).map(t => taskCard(t)).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER LIST
+// ═══════════════════════════════════════════════
+function renderList() {
+  const t = today(), we = weekEnd();
+  const active = tasks.filter(x => x.status !== '完了');
+  let filtered;
+  if (currentTab === 'today') {
+    filtered = active.filter(x => x.deadline && x.deadline <= t);
+  } else if (currentTab === 'week') {
+    filtered = active.filter(x => x.deadline && x.deadline > t && x.deadline <= we);
+  } else {
+    filtered = active.filter(x => !x.deadline || x.deadline > we);
+  }
+  const sorted = sortTasks(filtered);
+  const el = document.getElementById('list-container');
+  if (!sorted.length) {
+    const msgs = { today:'今日締切のタスクはありません', week:'今週締切のタスクはありません', future:'その他のタスクはありません' };
+    el.innerHTML = `<div class="empty"><div class="ei">📭</div><p>${msgs[currentTab]}</p></div>`;
+    return;
+  }
+  el.innerHTML = sorted.map(t => taskCard(t)).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER DONE
+// ═══════════════════════════════════════════════
+function renderDone() {
+  const done = tasks.filter(x => x.status === '完了')
+    .sort((a,b) => (b.completedAt||'').localeCompare(a.completedAt||''));
+  const el = document.getElementById('done-list');
+  if (!done.length) {
+    el.innerHTML = `<div class="empty"><div class="ei">📂</div><p>完了済みタスクはありません</p></div>`;
+    return;
+  }
+  el.innerHTML = done.map(t => {
+    const days = (t.createdAt && t.completedAt)
+      ? daysDiff(t.createdAt.slice(0,10), t.completedAt.slice(0,10))
+      : null;
+    const daysStr = days !== null ? `所要${days}日` : '';
+    return `<div class="done-card" onclick="openModal('${esc(t.id)}')">
+      <div class="done-title">${esc(t.title)}</div>
+      <div class="done-meta">
+        <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
+        <span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span>
+        ${t.completedAt ? `<span>✅ ${formatDateTimeJP(t.completedAt)}</span>` : ''}
+        ${daysStr ? `<span>⏱ ${daysStr}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  TASK CARD HTML
+// ═══════════════════════════════════════════════
+function taskCard(t) {
+  const dlClass = deadlineClass(t.deadline);
+  const dlLabel = deadlineLabel(t.deadline);
+  const isDone  = t.status === '完了';
+  return `<div class="task-item urg-${esc(t.urgency)} ${isDone?'done-item':''}" onclick="openModal('${esc(t.id)}')">
+    <div class="t-check ${isDone?'checked':''}" onclick="event.stopPropagation();toggleDone('${esc(t.id)}')"></div>
+    <div class="t-body">
+      <div class="t-title">${esc(t.title)}</div>
+      <div class="t-meta">
+        <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
+        <span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span>
+        <span class="badge bs">${esc(t.source)}</span>
+        ${dlLabel ? `<span class="t-dl ${dlClass}">${dlLabel}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
+function openModal(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const dlLabel = t.deadline ? formatDateJP(t.deadline) : '未設定';
+  const dlClass = deadlineClass(t.deadline);
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-hdr">
+      <div class="modal-title">${esc(t.title)}</div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="d-row"><span class="d-lbl">緊急度</span><span class="d-val"><span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span></span></div>
+    <div class="d-row"><span class="d-lbl">重要度</span><span class="d-val"><span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span></span></div>
+    <div class="d-row"><span class="d-lbl">期限</span><span class="d-val ${dlClass}">${esc(dlLabel)}</span></div>
+    <div class="d-row"><span class="d-lbl">発生元</span><span class="d-val">${esc(t.source)}</span></div>
+    <div class="d-row"><span class="d-lbl">状態</span><span class="d-val">${esc(t.status)}</span></div>
+    <div class="d-row"><span class="d-lbl">作成日時</span><span class="d-val">${formatDateTimeJP(t.createdAt)}</span></div>
+    ${t.completedAt ? `<div class="d-row"><span class="d-lbl">完了日時</span><span class="d-val">${formatDateTimeJP(t.completedAt)}</span></div>` : ''}
+    ${t.memo ? `<div class="d-lbl" style="margin-top:14px">メモ</div><div class="d-memo">${esc(t.memo)}</div>` : ''}
+    <div class="modal-acts">
+      <button class="btn btn-s" style="flex:1" onclick="startEdit('${esc(t.id)}')">✏️ 編集</button>
+      <button class="btn ${t.status==='完了'?'btn-s':'btn-g'}" style="flex:1" onclick="toggleDone('${esc(t.id)}');closeModal()">
+        ${t.status==='完了'?'↩ 未完了に戻す':'✅ 完了'}
+      </button>
+      <button class="btn btn-d" style="flex:0 0 auto" onclick="deleteTask('${esc(t.id)}')">🗑</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function startEdit(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = id;
+  document.getElementById('form-title').textContent = 'タスクを編集';
+  document.getElementById('f-edit-id').value = id;
+  document.getElementById('f-title').value = t.title || '';
+  document.getElementById('f-urgency').value = t.urgency || '中';
+  document.getElementById('f-importance').value = t.importance || '中';
+  document.getElementById('f-deadline').value = t.deadline || '';
+  document.getElementById('f-source').value = t.source || '自分';
+  document.getElementById('f-memo').value = t.memo || '';
+  nav('add');
+}
+
+function resetForm() {
+  editingId = null;
+  document.getElementById('form-title').textContent = 'タスクを追加';
+  document.getElementById('f-edit-id').value = '';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-urgency').value = '中';
+  document.getElementById('f-importance').value = '中';
+  document.getElementById('f-deadline').value = '';
+  document.getElementById('f-source').value = '自分';
+  document.getElementById('f-memo').value = '';
+}
+
+// ═══════════════════════════════════════════════
+//  CRUD
+// ═══════════════════════════════════════════════
+async function saveTask() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { showToast('タイトルを入力してください', 'err'); return; }
+
+  const id = document.getElementById('f-edit-id').value || null;
+  const now = new Date().toISOString();
+
+  const task = {
+    id:         id || genId(),
+    title,
+    urgency:    document.getElementById('f-urgency').value,
+    importance: document.getElementById('f-importance').value,
+    deadline:   document.getElementById('f-deadline').value || '',
+    source:     document.getElementById('f-source').value,
+    memo:       document.getElementById('f-memo').value.trim(),
+    status:     id ? (tasks.find(t=>t.id===id)||{}).status || '未完了' : '未完了',
+    createdAt:  id ? (tasks.find(t=>t.id===id)||{}).createdAt || now : now,
+    completedAt:id ? (tasks.find(t=>t.id===id)||{}).completedAt || null : null,
+  };
+
+  await StorageManager.save(task);
+  const idx = tasks.findIndex(t => t.id === task.id);
+  if (idx >= 0) tasks[idx] = task; else tasks.push(task);
+
+  showToast(id ? 'タスクを更新しました' : 'タスクを追加しました', 'ok');
+  editingId = null;
+  resetForm();
+  nav('list');
+}
+
+async function toggleDone(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const now = new Date().toISOString();
+  t.status = t.status === '完了' ? '未完了' : '完了';
+  t.completedAt = t.status === '完了' ? now : null;
+  await StorageManager.save(t);
+  showToast(t.status === '完了' ? '完了にしました ✅' : '未完了に戻しました', t.status==='完了'?'ok':'');
+  refreshCurrentView();
+}
+
+async function deleteTask(id) {
+  const confirmed = await confirmDialog('このタスクを削除しますか？', '削除する', true);
+  if (!confirmed) return;
+  await StorageManager.remove(id);
+  tasks = tasks.filter(t => t.id !== id);
+  document.getElementById('modal-overlay').classList.remove('open');
+  showToast('タスクを削除しました');
+  refreshCurrentView();
+}
+
+async function clearAllData() {
+  const confirmed = await confirmDialog('全データを削除します。この操作は取り消せません。本当によろしいですか？', '削除する', true);
+  if (!confirmed) return;
+  await StorageManager.clear();
+  tasks = [];
+  showToast('全データを削除しました', 'err');
+  renderDashboard();
+}
+
+// Simple confirm using the password dialog as confirm dialog
+function confirmDialog(msg, confirmLabel='はい', isDanger=false) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('pwd-overlay');
+    const dialog  = document.getElementById('pwd-dialog');
+    document.getElementById('pwd-title').textContent = '確認';
+    document.getElementById('pwd-desc').textContent  = msg;
+    document.getElementById('pwd-input').style.display = 'none';
+    const acts = dialog.querySelector('.pwd-acts');
+    const btnClass = isDanger ? 'btn-d' : 'btn-p';
+    acts.innerHTML = `
+      <button class="btn btn-s" style="flex:1" onclick="resolvePwd(false)">キャンセル</button>
+      <button class="btn ${btnClass}" style="flex:1" onclick="resolvePwd(true)">${confirmLabel}</button>
+    `;
+    overlay.classList.add('open');
+    pwdResolve = (v) => { resolve(v); resetPwdDialog(); };
+  });
+}
+
+function resolvePwd(val) {
+  if (pwdResolve) {
+    const v = val === true ? true : val === false ? false : document.getElementById('pwd-input').value;
+    pwdResolve(v);
+    pwdResolve = null;
+  }
+}
+
+function resetPwdDialog() {
+  document.getElementById('pwd-overlay').classList.remove('open');
+  const dialog = document.getElementById('pwd-dialog');
+  document.getElementById('pwd-input').style.display = '';
+  document.getElementById('pwd-input').value = '';
+  dialog.querySelector('.pwd-acts').innerHTML = `
+    <button class="btn btn-s" style="flex:1" onclick="cancelPwd()">キャンセル</button>
+    <button class="btn btn-p" style="flex:2" onclick="confirmPwd()">確認</button>
+  `;
+}
+
+function cancelPwd() {
+  if (pwdResolve) { pwdResolve(null); pwdResolve = null; }
+  resetPwdDialog();
+}
+
+function confirmPwd() {
+  resolvePwd('__pwd__');
+}
+
+function refreshCurrentView() {
+  if (currentView === 'dashboard') renderDashboard();
+  else if (currentView === 'list') renderList();
+  else if (currentView === 'done') renderDone();
+}
+
+// ═══════════════════════════════════════════════
+//  BACKUP — EXPORT
+// ═══════════════════════════════════════════════
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+}
+
+function exportJSON() {
+  const data = { version:1, exportedAt: new Date().toISOString(), tasks };
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  downloadFile(JSON.stringify(data, null, 2), `tasks_backup_${stamp}.json`, 'application/json');
+  showToast('JSONファイルをダウンロードしました', 'ok');
+}
+
+async function exportEncrypted() {
+  const password = await askPassword('暗号化パスワードを設定', 'バックアップファイルを暗号化するパスワードを入力してください。復元時に必要になります。');
+  if (!password) return;
+  if (password.length < 4) { showToast('パスワードは4文字以上にしてください', 'err'); return; }
+  try {
+    const data    = { version:1, exportedAt: new Date().toISOString(), tasks };
+    const enc     = await CryptoManager.encrypt(data, password);
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    downloadFile(enc, `tasks_backup_${stamp}.enc`, 'application/octet-stream');
+    showToast('暗号化ファイルをダウンロードしました 🔒', 'ok');
+  } catch(e) {
+    showToast('暗号化に失敗しました', 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  BACKUP — IMPORT
+// ═══════════════════════════════════════════════
+async function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const imported = Array.isArray(data) ? data : (data.tasks || []);
+    if (!imported.length) { showToast('インポートするタスクがありませんでした', 'err'); return; }
+    const confirmed = await confirmDialog(`${imported.length}件のタスクをインポートします。既存データに追加されます。`, 'インポート');
+    if (!confirmed) return;
+    for (const t of imported) {
+      if (!t.id || !t.title) continue;
+      await StorageManager.save(t);
+      const idx = tasks.findIndex(x => x.id === t.id);
+      if (idx >= 0) tasks[idx] = t; else tasks.push(t);
+    }
+    showToast(`${imported.length}件をインポートしました`, 'ok');
+    renderDashboard();
+  } catch(e) {
+    showToast('JSONの読み込みに失敗しました', 'err');
+  }
+}
+
+async function importEncrypted(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  const password = await askPassword('復号パスワードを入力', 'バックアップ時に設定したパスワードを入力してください。');
+  if (!password) return;
+  try {
+    const text = await file.text();
+    const data = await CryptoManager.decrypt(text.trim(), password);
+    const imported = Array.isArray(data) ? data : (data.tasks || []);
+    if (!imported.length) { showToast('インポートするタスクがありませんでした', 'err'); return; }
+    const confirmed = await confirmDialog(`${imported.length}件のタスクをインポートします。既存データに追加されます。`, 'インポート');
+    if (!confirmed) return;
+    for (const t of imported) {
+      if (!t.id || !t.title) continue;
+      await StorageManager.save(t);
+      const idx = tasks.findIndex(x => x.id === t.id);
+      if (idx >= 0) tasks[idx] = t; else tasks.push(t);
+    }
+    showToast(`${imported.length}件をインポートしました 🔓`, 'ok');
+    renderDashboard();
+  } catch(e) {
+    showToast('復号に失敗しました。パスワードを確認してください', 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PASSWORD PROMPT (no prompt())
+// ═══════════════════════════════════════════════
+function askPassword(title, desc) {
+  return new Promise((resolve) => {
+    document.getElementById('pwd-title').textContent = title;
+    document.getElementById('pwd-desc').textContent  = desc;
+    document.getElementById('pwd-input').style.display = '';
+    document.getElementById('pwd-input').value = '';
+    const acts = document.getElementById('pwd-dialog').querySelector('.pwd-acts');
+    acts.innerHTML = `
+      <button class="btn btn-s" style="flex:1" onclick="cancelPwd()">キャンセル</button>
+      <button class="btn btn-p" style="flex:2" onclick="confirmPwd()">確認</button>
+    `;
+    document.getElementById('pwd-overlay').classList.add('open');
+
+    pwdResolve = (v) => {
+      if (v === '__pwd__') {
+        const pw = document.getElementById('pwd-input').value;
+        resetPwdDialog();
+        resolve(pw || null);
+      } else {
+        resetPwdDialog();
+        resolve(null);
+      }
+      pwdResolve = null;
+    };
+
+    // Allow Enter key
+    const inp = document.getElementById('pwd-input');
+    inp.onkeydown = (e) => { if (e.key === 'Enter') confirmPwd(); };
+    setTimeout(() => inp.focus(), 100);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  SERVICE WORKER REGISTRATION
+// ═══════════════════════════════════════════════
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+async function init() {
+  await StorageManager.initDB();
+  tasks = await StorageManager.getAll();
+  renderDashboard();
+  registerSW();
+
+  // Set today as default deadline
+  document.getElementById('f-deadline').value = today();
+
+  // Close modal on overlay click is handled inline
+  // Prevent iOS bounce
+  document.addEventListener('touchmove', (e) => {
+    if (e.target === document.body) e.preventDefault();
+  }, { passive: false });
+}
+
+init();
+</script>
+</body>
+</html>
