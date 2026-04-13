@@ -276,6 +276,9 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .wall-task-card.urg-高{border-left-color:var(--red);}
 .wall-task-card.urg-中{border-left-color:var(--orange);}
 .wall-task-card.urg-低{border-left-color:var(--green);}
+.wall-task-card.future{padding:2px 6px;margin-bottom:2px;border-left-width:2px;background:#F8FAFC;box-shadow:none;}
+.wall-task-card.future .wall-task-title{font-size:10px;color:var(--muted);}
+.wall-task-card.future .wall-date-label{font-size:9px;}
 .wall-task-title{
   font-size:11px;font-weight:600;color:var(--text);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -452,6 +455,13 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
         <span class="wall-sec-count" id="wall-week-count"></span>
       </div>
       <div id="wall-week-list"></div>
+    </div>
+    <div id="wall-future" class="wall-section">
+      <div class="wall-sec-header">
+        <span class="wall-sec-badge" style="background:#A0AEC0;color:#fff;">📌 来週以降</span>
+        <span class="wall-sec-count" id="wall-future-count"></span>
+      </div>
+      <div id="wall-future-list"></div>
     </div>
     <div id="wall-footer" onclick="nav('add')">タップして追加 →</div>
   </div>
@@ -799,13 +809,15 @@ async function acquireWakeLock() {
   } catch (e) { /* 非対応環境では無視 */ }
 }
 
-function wallTaskCard(t, showDate) {
+function wallTaskCard(t, showDate, isFuture) {
   const dateHtml = showDate && t.deadline
-    ? `<span style="font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;margin-right:6px;flex-shrink:0;">${esc(formatDateJP(t.deadline))}</span>`
+    ? `<span class="wall-date-label" style="font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;margin-right:6px;flex-shrink:0;">${esc(formatDateJP(t.deadline))}</span>`
     : '';
-  return `<div class="wall-task-card urg-${esc(t.urgency)}" onclick="openModal('${esc(t.id)}')">
+  const futureClass = isFuture ? ' future' : '';
+  const badgeHtml = isFuture ? '' : `<span class="wall-task-badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>`;
+  return `<div class="wall-task-card urg-${esc(t.urgency)}${futureClass}" onclick="openModal('${esc(t.id)}')">
     ${dateHtml}<span class="wall-task-title" style="flex:1;">${esc(t.title)}</span>
-    <span class="wall-task-badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
+    ${badgeHtml}
   </div>`;
 }
 
@@ -831,11 +843,22 @@ function renderWall() {
   const todayT   = active.filter(x => x.deadline === todayStr);
   const tomorrowT= active.filter(x => x.deadline === tomorrowStr);
   const weekT    = active.filter(x => x.deadline && x.deadline > tomorrowStr && x.deadline <= we);
+  const futureT  = active.filter(x => x.deadline && x.deadline > we);
 
   renderWallSection('wall-overdue',  'wall-overdue-list',  'wall-overdue-count',  overdue,   true);
   renderWallSection('wall-today',    'wall-today-list',    'wall-today-count',    todayT,    false);
   renderWallSection('wall-tomorrow', 'wall-tomorrow-list', 'wall-tomorrow-count', tomorrowT, true);
   renderWallSection('wall-week',     'wall-week-list',     'wall-week-count',     weekT,     true);
+
+  const futureSection = document.getElementById('wall-future');
+  if (!futureT.length) {
+    futureSection.style.display = 'none';
+  } else {
+    futureSection.style.display = '';
+    document.getElementById('wall-future-count').textContent = `${futureT.length}件`;
+    futureT.sort((a, b) => a.deadline.localeCompare(b.deadline));
+    document.getElementById('wall-future-list').innerHTML = futureT.map(t => wallTaskCard(t, true, true)).join('');
+  }
 }
 
 function switchTab(tab) {
