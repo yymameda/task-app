@@ -492,6 +492,13 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
       </div>
       <div id="wall-future-list"></div>
     </div>
+    <div id="wall-someday" class="wall-section">
+      <div class="wall-sec-header">
+        <span class="wall-sec-badge" style="background:#718096;color:#fff;">🗂 いつか</span>
+        <span class="wall-sec-count" id="wall-someday-count"></span>
+      </div>
+      <div id="wall-someday-list"></div>
+    </div>
     <div id="wall-footer" onclick="nav('add')">タップして追加 →</div>
   </div>
 
@@ -499,46 +506,38 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   <div class="view" id="view-secretary">
     <h1 class="page-title">AI秘書</h1>
 
-    <!-- テキスト入力エリア -->
-    <div class="card" style="margin-bottom:14px;">
-      <div class="form-group" style="margin-bottom:10px;">
-        <textarea id="sec-text-input" rows="4" placeholder="ここをタップしてキーボードの🎤で音声入力" style="font-size:16px;line-height:1.6;resize:none;"></textarea>
+    <!-- 入力エリア＋送信ボタン -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="form-group" style="margin-bottom:12px;">
+        <textarea id="sec-text-input" rows="4"
+          placeholder="ここに音声入力またはテキストを入力"
+          style="font-size:16px;line-height:1.7;resize:none;"></textarea>
       </div>
-      <button class="btn btn-p btn-w" onclick="sendTextToSecretary()" style="margin-bottom:0;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Claudeに送る
-      </button>
+      <div style="display:flex;gap:10px;">
+        <button onclick="sendTextToSecretary()"
+          style="flex:1;background:linear-gradient(135deg,#2D7D9A,#1E5A70);color:#fff;border:none;border-radius:12px;padding:16px 8px;cursor:pointer;font-family:inherit;box-shadow:0 3px 12px rgba(30,90,112,.35);transition:opacity .2s;">
+          <div style="font-size:26px;margin-bottom:4px;">🎤</div>
+          <div style="font-size:13px;font-weight:700;line-height:1.3;">音声・テキストで送る</div>
+        </button>
+        <button onclick="sendFilePrompt()"
+          style="flex:1;background:#E8EDF2;color:#1A2B3C;border:none;border-radius:12px;padding:16px 8px;cursor:pointer;font-family:inherit;transition:opacity .2s;">
+          <div style="font-size:26px;margin-bottom:4px;">📎</div>
+          <div style="font-size:13px;font-weight:700;line-height:1.3;">ファイルを添付して送る</div>
+        </button>
+      </div>
     </div>
 
-    <!-- 3 action buttons -->
-    <div class="secretary-grid">
-      <button class="sec-action-btn" id="sec-btn-camera" onclick="startCameraCapture()">
-        <span class="sec-btn-icon">📷</span>
-        <span class="sec-btn-label">カメラスキャン</span>
-      </button>
-      <button class="sec-action-btn" id="sec-btn-pdf" onclick="triggerPdfInput()">
-        <span class="sec-btn-icon">📄</span>
-        <span class="sec-btn-label">PDF読み込み</span>
-      </button>
-      <button class="sec-action-btn" id="sec-btn-board" onclick="showSecBoard()" style="grid-column:span 2;">
-        <span class="sec-btn-icon">📋</span>
-        <span class="sec-btn-label">秘書ボード</span>
-      </button>
-    </div>
-
-    <!-- hidden file inputs -->
-    <input type="file" id="sec-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleCameraInput(event)">
-    <input type="file" id="sec-pdf-input" accept=".pdf,application/pdf" style="display:none" onchange="handlePdfInput(event)">
-
-    <!-- result panel (voice / camera / pdf feedback) -->
+    <!-- result panel -->
     <div id="sec-result-panel" style="display:none;"></div>
 
-    <!-- secretary board (default) -->
+    <!-- 秘書ボード -->
     <div id="sec-board-panel">
       <div class="card" style="margin-bottom:14px;">
         <div class="form-group" style="margin-bottom:10px;">
-          <label class="fl">Claudeの返信を貼り付け</label>
-          <textarea id="sec-board-input" placeholder="Claudeから受け取った返信をここに貼り付けてください…&#10;&#10;【タスク】と【要点】の両セクションを含む返信に対応しています。" style="min-height:160px;font-size:14px;"></textarea>
+          <label class="fl">📋 秘書ボード — Claudeの返信を貼り付け</label>
+          <textarea id="sec-board-input"
+            placeholder="Claudeから受け取った返信をここに貼り付けてください…&#10;&#10;【タスク】タスク名｜期限｜優先度｜詳細&#10;【要点】の両セクションに対応しています。"
+            style="min-height:160px;font-size:14px;"></textarea>
         </div>
         <button class="btn btn-p btn-w" onclick="applyBoardContent()" style="margin-bottom:0;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -943,6 +942,7 @@ function renderWall() {
   const tomorrowT= active.filter(x => x.deadline === tomorrowStr);
   const weekT    = active.filter(x => x.deadline && x.deadline > tomorrowStr && x.deadline <= we);
   const futureT  = active.filter(x => x.deadline && x.deadline > we);
+  const someday  = active.filter(x => !x.deadline);
 
   renderWallSection('wall-overdue',  'wall-overdue-list',  'wall-overdue-count',  overdue,   true);
   renderWallSection('wall-today',    'wall-today-list',    'wall-today-count',    todayT,    false);
@@ -958,6 +958,8 @@ function renderWall() {
     futureT.sort((a, b) => a.deadline.localeCompare(b.deadline));
     document.getElementById('wall-future-list').innerHTML = futureT.map(t => wallTaskCard(t, true, true)).join('');
   }
+
+  renderWallSection('wall-someday', 'wall-someday-list', 'wall-someday-count', someday, false);
 }
 
 function switchTab(tab) {
@@ -1467,14 +1469,26 @@ function watchDateChange() {
 // ═══════════════════════════════════════════════
 //  AI SECRETARY MODE
 // ═══════════════════════════════════════════════
-const SECRETARY_PROMPT =
-`あなたは小学校教員の有能な秘書です。
-以下の内容を分析して、
-【タスク】と【要点】に整理してください。
-タスクは期限・優先度も推測して箇条書き、
-要点は簡潔に箇条書きにしてください。
 
-`;
+function getSecretaryPrompt(userText) {
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  const base =
+`あなたは小学校教員の有能な秘書です。
+以下の内容（または添付ファイル）を分析して
+以下の形式で整理してください。
+
+【タスク】
+・タスク名｜期限｜優先度（高・中・低）｜詳細
+
+【要点】
+・箇条書きで簡潔に
+
+期限が「明日」「来週」などの相対表現は
+今日の日付を基準に具体的な日付に変換してください。
+今日は${dateStr}です。`;
+  return userText ? base + '\n\n' + userText : base;
+}
 
 function renderSecretary() {
   document.getElementById('sec-result-panel').style.display = 'none';
@@ -1482,7 +1496,7 @@ function renderSecretary() {
   renderBoardHistory();
 }
 
-// ── ① テキスト入力 ────────────────────────────────
+// ── ① 音声・テキストで送る ───────────────────────
 function sendTextToSecretary() {
   const text = document.getElementById('sec-text-input').value.trim();
   if (!text) { showToast('テキストを入力してください', 'err'); return; }
@@ -1490,113 +1504,20 @@ function sendTextToSecretary() {
   sendToClaudeText(text);
 }
 
-// ── ② カメラスキャン ────────────────────────────
-function startCameraCapture() {
-  document.getElementById('sec-camera-input').click();
-}
-
-async function handleCameraInput(event) {
-  const file = event.target.files[0];
-  event.target.value = '';
-  if (!file) return;
-  const objUrl = URL.createObjectURL(file);
-
-  showSecResult(`<div class="sec-status-card">
-    <img src="${objUrl}" class="sec-preview-img" alt="撮影画像">
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
-      ① 画像をクリップボードにコピーして claude.ai に貼り付け、<br>
-      ② 下のプロンプトも貼り付けてください。
-    </div>
-    <div style="background:#F8FAFC;border-radius:8px;padding:10px;font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.6;margin-bottom:12px;">${esc(SECRETARY_PROMPT)}（この画像の内容を分析してください）</div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-s" style="flex:1;" onclick="copyPromptOnly()">📋 プロンプトをコピー</button>
-      <button class="btn btn-p" style="flex:1;" onclick="copyImageAndOpen('${objUrl}')">📷 画像コピー＆開く</button>
-    </div>
-  </div>`);
-}
-
-async function copyImageAndOpen(objUrl) {
+// ── ② ファイルを添付して送る ──────────────────────
+async function sendFilePrompt() {
   try {
-    const blob  = await fetch(objUrl).then(r => r.blob());
-    const png   = await blobToPng(blob);
-    await navigator.clipboard.write([new ClipboardItem({'image/png': png})]);
-    showToast('画像をコピーしました ✅', 'ok');
+    await navigator.clipboard.writeText(getSecretaryPrompt(''));
+    showToast('プロンプトをコピーしました ✅', 'ok');
+    setTimeout(() => window.open('https://claude.ai/new', '_blank'), 600);
   } catch {
-    showToast('画像コピー未対応。手動で貼り付けてください', 'err');
+    showToast('クリップボードへのコピーに失敗しました', 'err');
   }
-  setTimeout(() => window.open('https://claude.ai/new', '_blank'), 500);
-}
-
-async function blobToPng(blob) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      c.toBlob(resolve, 'image/png');
-    };
-    img.src = url;
-  });
-}
-
-function copyPromptOnly() {
-  navigator.clipboard.writeText(SECRETARY_PROMPT + '（この画像の内容を分析してください）')
-    .then(() => showToast('プロンプトをコピーしました', 'ok'))
-    .catch(() => showToast('コピーに失敗しました', 'err'));
-}
-
-// ── ③ PDF読み込み ────────────────────────────────
-function triggerPdfInput() {
-  document.getElementById('sec-pdf-input').click();
-}
-
-async function handlePdfInput(event) {
-  const file = event.target.files[0];
-  event.target.value = '';
-  if (!file) return;
-  showSecResult(`<div class="sec-status-card" style="text-align:center;padding:28px;">
-    <div style="font-size:28px;margin-bottom:8px;">⏳</div>
-    <div style="font-weight:700;">PDF解析中…</div>
-  </div>`);
-  try {
-    const text = await extractPdfText(file);
-    if (!text.trim()) { showToast('テキストを抽出できませんでした', 'err'); showSecBoard(); return; }
-    sendToClaudeText(text);
-  } catch (e) {
-    showToast('PDF読み込みエラー: ' + (e.message || e), 'err');
-    showSecBoard();
-  }
-}
-
-async function extractPdfText(file) {
-  if (!window.pdfjsLib) {
-    await new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('pdf.jsの読み込みに失敗しました（オフライン？）'));
-      document.head.appendChild(s);
-    });
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-  const buf = await file.arrayBuffer();
-  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
-  let out = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page    = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    out += content.items.map(it => it.str).join(' ') + '\n';
-  }
-  return out;
 }
 
 // ── 共通：テキストをClaudeへ送る ─────────────────
 async function sendToClaudeText(content) {
-  const full = SECRETARY_PROMPT + content;
+  const full = getSecretaryPrompt(content);
   try {
     await navigator.clipboard.writeText(full);
     showSecResult(`<div class="sec-status-card">
@@ -1616,7 +1537,7 @@ async function sendToClaudeText(content) {
   }
 }
 
-// ── ④ 秘書ボード ─────────────────────────────────
+// ── 秘書ボード ────────────────────────────────────
 function showSecBoard() {
   document.getElementById('sec-result-panel').style.display = 'none';
   document.getElementById('sec-board-panel').style.display = '';
@@ -1635,7 +1556,7 @@ async function applyBoardContent() {
       id: genId(), title: pt.title,
       urgency: pt.urgency, importance: pt.importance,
       deadline: pt.deadline, source: '引き継ぎ',
-      contact: '', memo: '', status: '未完了',
+      contact: '', memo: pt.memo || '', status: '未完了',
       createdAt: new Date().toISOString(), completedAt: null,
     };
     await StorageManager.save(task);
@@ -1673,27 +1594,50 @@ function parseClaudeReply(text) {
   return { tasks: parsedTasks, points };
 }
 
-function parseTaskLine(text) {
-  let urgency = '中';
-  if (/優先度[：:]\s*高|高優先|至急|緊急/.test(text)) urgency = '高';
-  else if (/優先度[：:]\s*低|低優先/.test(text))       urgency = '低';
-
-  let deadline = '';
+// 相対日付・具体日付を YYYY-MM-DD に変換
+function relativeToDate(text) {
+  if (!text) return '';
   const now = new Date();
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const add = (n) => { const d = new Date(now); d.setDate(d.getDate()+n); return fmt(d); };
+
+  if (/今日|本日/.test(text))  return today();
+  if (/明後日/.test(text))     return add(2);
+  if (/明日/.test(text))       return add(1);
+  if (/今週|週内/.test(text))  return weekEnd();
+  if (/来週/.test(text))       return add(7);
+
+  // YYYY/MM/DD または YYYY-MM-DD
+  const full = text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (full) return `${full[1]}-${full[2].padStart(2,'0')}-${full[3].padStart(2,'0')}`;
+
+  // MM/DD または M月D日
   const dm = text.match(/(\d{1,2})[\/月](\d{1,2})/);
   if (dm) {
-    deadline = `${now.getFullYear()}-${dm[1].padStart(2,'0')}-${dm[2].padStart(2,'0')}`;
-  } else if (/今日|本日/.test(text)) {
-    deadline = today();
-  } else if (/明日/.test(text)) {
-    const t = new Date(); t.setDate(t.getDate()+1);
-    deadline = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-  } else if (/今週|週内/.test(text)) {
-    deadline = weekEnd();
+    const m = parseInt(dm[1]), day = parseInt(dm[2]);
+    let y = now.getFullYear();
+    const test = new Date(y, m-1, day);
+    if (test < now && test.getMonth() === m-1) y++;
+    return `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   }
+  return '';
+}
 
-  const title = text.replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim() || text;
-  return { title, urgency, importance: '中', deadline };
+// タスク行をパース（タスク名｜期限｜優先度｜詳細 形式対応）
+function parseTaskLine(text) {
+  const parts = text.split('｜').map(s => s.trim());
+  const rawTitle    = parts[0] || text;
+  const rawDeadline = parts[1] || '';
+  const rawUrgency  = parts[2] || '';
+  const rawMemo     = parts[3] || '';
+
+  let urgency = '中';
+  if (/高/.test(rawUrgency) || /至急|緊急/.test(rawTitle)) urgency = '高';
+  else if (/低/.test(rawUrgency)) urgency = '低';
+
+  const deadline = relativeToDate(rawDeadline) || relativeToDate(rawTitle);
+  const title    = rawTitle.replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim() || rawTitle;
+  return { title, urgency, importance: '中', deadline, memo: rawMemo };
 }
 
 function renderBoardHistory() {
