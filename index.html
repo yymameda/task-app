@@ -1463,9 +1463,9 @@ function downloadFile(content, filename, type) {
 
 function exportJSON() {
   const data = { version:1, exportedAt: new Date().toISOString(), tasks };
-  const d = new Date();
-  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-  downloadFile(JSON.stringify(data, null, 2), 'task_backup.json', 'application/json');
+  const now = new Date();
+  const dateStr = String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  downloadFile(JSON.stringify(data, null, 2), `task_backup_${dateStr}.json`, 'application/json');
   localStorage.setItem('last_backup_at', new Date().toISOString());
   showToast('JSONファイルをダウンロードしました', 'ok');
 }

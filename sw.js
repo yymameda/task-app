@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.2.7';
+const CACHE_VERSION = 'v1.2.8';
 const CACHE_NAME = `teacher-tasks-${CACHE_VERSION}`;
 
 const CACHE_URLS = [
