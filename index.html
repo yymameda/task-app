@@ -291,10 +291,24 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .b-handover{background:#FEF9C3;color:#713F12;}
 
 /* ── SECRETARY VIEW ── */
-.sec-input-row{display:flex;gap:8px;margin-bottom:16px;}
-.sec-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);margin-bottom:14px;}
-.sec-card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
-.sec-empty-msg{font-size:13px;color:var(--muted);padding:4px 0;}
+.secretary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.sec-action-btn{
+  background:var(--card);border:2px solid transparent;border-radius:var(--r);
+  padding:22px 10px;box-shadow:var(--shadow);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  transition:transform .15s,box-shadow .15s;font-family:inherit;width:100%;
+}
+.sec-action-btn:active{transform:scale(.97);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.sec-action-btn.recording{background:#FEE2E2;border-color:#E53E3E;animation:sec-pulse 1s infinite;}
+@keyframes sec-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.sec-btn-icon{font-size:36px;line-height:1;}
+.sec-btn-label{font-size:13px;font-weight:700;color:var(--text);}
+.sec-status-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);margin-bottom:14px;}
+.sec-preview-img{width:100%;border-radius:10px;margin-bottom:12px;max-height:260px;object-fit:contain;background:#F0F4F8;}
+.sec-hist-item{background:var(--card);border-radius:var(--r);padding:13px 15px;box-shadow:var(--shadow);margin-bottom:9px;}
+.sec-hist-date{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:7px;}
+.sec-hist-point{font-size:13px;color:var(--text);line-height:1.7;padding-left:14px;position:relative;}
+.sec-hist-point::before{content:'・';position:absolute;left:0;}
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;}
@@ -484,13 +498,48 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   <!-- ⑦ SECRETARY -->
   <div class="view" id="view-secretary">
     <h1 class="page-title">AI秘書</h1>
-    <div class="sec-input-row">
-      <input type="text" id="secretary-input" placeholder="「今日の業務を教えて」と入力" autocorrect="off" autocapitalize="off" style="flex:1;">
-      <button class="btn btn-p" onclick="handleSecretaryInput()" style="padding:12px 16px;flex-shrink:0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+
+    <!-- 4 big action buttons -->
+    <div class="secretary-grid">
+      <button class="sec-action-btn" id="sec-btn-voice" onclick="startVoiceInput()">
+        <span class="sec-btn-icon">🎤</span>
+        <span class="sec-btn-label">音声入力</span>
+      </button>
+      <button class="sec-action-btn" id="sec-btn-camera" onclick="startCameraCapture()">
+        <span class="sec-btn-icon">📷</span>
+        <span class="sec-btn-label">カメラスキャン</span>
+      </button>
+      <button class="sec-action-btn" id="sec-btn-pdf" onclick="triggerPdfInput()">
+        <span class="sec-btn-icon">📄</span>
+        <span class="sec-btn-label">PDF読み込み</span>
+      </button>
+      <button class="sec-action-btn" id="sec-btn-board" onclick="showSecBoard()">
+        <span class="sec-btn-icon">📋</span>
+        <span class="sec-btn-label">秘書ボード</span>
       </button>
     </div>
-    <div id="secretary-content"></div>
+
+    <!-- hidden file inputs -->
+    <input type="file" id="sec-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleCameraInput(event)">
+    <input type="file" id="sec-pdf-input" accept=".pdf,application/pdf" style="display:none" onchange="handlePdfInput(event)">
+
+    <!-- result panel (voice / camera / pdf feedback) -->
+    <div id="sec-result-panel" style="display:none;"></div>
+
+    <!-- secretary board (default) -->
+    <div id="sec-board-panel">
+      <div class="card" style="margin-bottom:14px;">
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="fl">Claudeの返信を貼り付け</label>
+          <textarea id="sec-board-input" placeholder="Claudeから受け取った返信をここに貼り付けてください…&#10;&#10;【タスク】と【要点】の両セクションを含む返信に対応しています。" style="min-height:160px;font-size:14px;"></textarea>
+        </div>
+        <button class="btn btn-p btn-w" onclick="applyBoardContent()" style="margin-bottom:0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          タスクに反映する
+        </button>
+      </div>
+      <div id="sec-board-history"></div>
+    </div>
   </div>
 
   <!-- ⑥ BACKUP -->
@@ -1411,60 +1460,287 @@ function watchDateChange() {
 // ═══════════════════════════════════════════════
 //  AI SECRETARY MODE
 // ═══════════════════════════════════════════════
+const SECRETARY_PROMPT =
+`あなたは小学校教員の有能な秘書です。
+以下の内容を分析して、
+【タスク】と【要点】に整理してください。
+タスクは期限・優先度も推測して箇条書き、
+要点は簡潔に箇条書きにしてください。
+
+`;
+
+let _recognition = null;
+
 function renderSecretary() {
-  const todayStr = today();
-  const tom = new Date(); tom.setDate(tom.getDate() + 1);
-  const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
-  const we = weekEnd();
-  const d  = new Date();
-  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+  document.getElementById('sec-result-panel').style.display = 'none';
+  document.getElementById('sec-board-panel').style.display = '';
+  renderBoardHistory();
+}
 
-  const active     = tasks.filter(x => x.status !== '完了');
-  const habitToday = tasks.filter(x => x.isHabit && x.deadline === todayStr);
-  const urgentTasks = active.filter(x => !x.isHabit && x.deadline && x.deadline <= we);
-  const handovers   = active.filter(x => x.source === '引き継ぎ');
+// ── ① 音声入力 ──────────────────────────────────
+function startVoiceInput() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('このブラウザは音声入力に対応していません', 'err'); return; }
+  const btn = document.getElementById('sec-btn-voice');
+  if (_recognition) { _recognition.stop(); return; }
 
-  function taskRow(t) {
-    return `<div class="task-item urg-${esc(t.urgency)} ${t.status==='完了'?'done-item':''}" style="margin-bottom:6px;" onclick="openModal('${esc(t.id)}')">
-      <div class="t-check ${t.status==='完了'?'checked':''}" onclick="event.stopPropagation();toggleDone('${esc(t.id)}')"></div>
-      <div class="t-body">
-        <div class="t-title">${esc(t.title)}</div>
-        ${t.deadline ? `<div class="t-meta"><span class="t-dl ${deadlineClass(t.deadline)}">${deadlineLabel(t.deadline)}</span></div>` : ''}
+  _recognition = new SR();
+  _recognition.lang = 'ja-JP';
+  _recognition.continuous = false;
+  _recognition.interimResults = false;
+  btn.classList.add('recording');
+
+  showSecResult(`<div class="sec-status-card" style="text-align:center;padding:28px;">
+    <div style="font-size:28px;margin-bottom:8px;">🎤</div>
+    <div style="font-weight:700;margin-bottom:4px;">聞き取り中…</div>
+    <div style="font-size:12px;color:var(--muted);">もう一度タップで停止</div>
+  </div>`);
+
+  _recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    btn.classList.remove('recording');
+    _recognition = null;
+    sendToClaudeText(text);
+  };
+  _recognition.onerror = (e) => {
+    btn.classList.remove('recording');
+    _recognition = null;
+    showToast('音声入力エラー: ' + e.error, 'err');
+    showSecBoard();
+  };
+  _recognition.onend = () => {
+    btn.classList.remove('recording');
+    _recognition = null;
+  };
+  _recognition.start();
+}
+
+// ── ② カメラスキャン ────────────────────────────
+function startCameraCapture() {
+  document.getElementById('sec-camera-input').click();
+}
+
+async function handleCameraInput(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const objUrl = URL.createObjectURL(file);
+
+  showSecResult(`<div class="sec-status-card">
+    <img src="${objUrl}" class="sec-preview-img" alt="撮影画像">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+      ① 画像をクリップボードにコピーして claude.ai に貼り付け、<br>
+      ② 下のプロンプトも貼り付けてください。
+    </div>
+    <div style="background:#F8FAFC;border-radius:8px;padding:10px;font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.6;margin-bottom:12px;">${esc(SECRETARY_PROMPT)}（この画像の内容を分析してください）</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-s" style="flex:1;" onclick="copyPromptOnly()">📋 プロンプトをコピー</button>
+      <button class="btn btn-p" style="flex:1;" onclick="copyImageAndOpen('${objUrl}')">📷 画像コピー＆開く</button>
+    </div>
+  </div>`);
+}
+
+async function copyImageAndOpen(objUrl) {
+  try {
+    const blob  = await fetch(objUrl).then(r => r.blob());
+    const png   = await blobToPng(blob);
+    await navigator.clipboard.write([new ClipboardItem({'image/png': png})]);
+    showToast('画像をコピーしました ✅', 'ok');
+  } catch {
+    showToast('画像コピー未対応。手動で貼り付けてください', 'err');
+  }
+  setTimeout(() => window.open('https://claude.ai/new', '_blank'), 500);
+}
+
+async function blobToPng(blob) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      c.toBlob(resolve, 'image/png');
+    };
+    img.src = url;
+  });
+}
+
+function copyPromptOnly() {
+  navigator.clipboard.writeText(SECRETARY_PROMPT + '（この画像の内容を分析してください）')
+    .then(() => showToast('プロンプトをコピーしました', 'ok'))
+    .catch(() => showToast('コピーに失敗しました', 'err'));
+}
+
+// ── ③ PDF読み込み ────────────────────────────────
+function triggerPdfInput() {
+  document.getElementById('sec-pdf-input').click();
+}
+
+async function handlePdfInput(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  showSecResult(`<div class="sec-status-card" style="text-align:center;padding:28px;">
+    <div style="font-size:28px;margin-bottom:8px;">⏳</div>
+    <div style="font-weight:700;">PDF解析中…</div>
+  </div>`);
+  try {
+    const text = await extractPdfText(file);
+    if (!text.trim()) { showToast('テキストを抽出できませんでした', 'err'); showSecBoard(); return; }
+    sendToClaudeText(text);
+  } catch (e) {
+    showToast('PDF読み込みエラー: ' + (e.message || e), 'err');
+    showSecBoard();
+  }
+}
+
+async function extractPdfText(file) {
+  if (!window.pdfjsLib) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('pdf.jsの読み込みに失敗しました（オフライン？）'));
+      document.head.appendChild(s);
+    });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  let out = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page    = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    out += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  return out;
+}
+
+// ── 共通：テキストをClaudeへ送る ─────────────────
+async function sendToClaudeText(content) {
+  const full = SECRETARY_PROMPT + content;
+  try {
+    await navigator.clipboard.writeText(full);
+    showSecResult(`<div class="sec-status-card">
+      <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:8px;">✅ クリップボードにコピーしました</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+        claude.aiが開きます。テキストフィールドに長押しで「ペースト」してください。
       </div>
-    </div>`;
+      <div style="background:#F8FAFC;border-radius:8px;padding:10px;font-size:12px;color:var(--text);max-height:100px;overflow:hidden;line-height:1.5;">${esc(content.slice(0,200))}${content.length>200?'…':''}</div>
+      <button class="btn btn-p btn-w" style="margin-top:12px;margin-bottom:0;" onclick="window.open('https://claude.ai/new','_blank')">
+        claude.ai を開く →
+      </button>
+    </div>`);
+    setTimeout(() => window.open('https://claude.ai/new', '_blank'), 700);
+  } catch {
+    showToast('クリップボードへのコピーに失敗しました', 'err');
+    showSecBoard();
+  }
+}
+
+// ── ④ 秘書ボード ─────────────────────────────────
+function showSecBoard() {
+  document.getElementById('sec-result-panel').style.display = 'none';
+  document.getElementById('sec-board-panel').style.display = '';
+  renderBoardHistory();
+}
+
+async function applyBoardContent() {
+  const text = document.getElementById('sec-board-input').value.trim();
+  if (!text) { showToast('返信を貼り付けてください', 'err'); return; }
+
+  const { tasks: parsed, points } = parseClaudeReply(text);
+  let added = 0;
+  for (const pt of parsed) {
+    if (!pt.title) continue;
+    const task = {
+      id: genId(), title: pt.title,
+      urgency: pt.urgency, importance: pt.importance,
+      deadline: pt.deadline, source: '引き継ぎ',
+      contact: '', memo: '', status: '未完了',
+      createdAt: new Date().toISOString(), completedAt: null,
+    };
+    await StorageManager.save(task);
+    tasks.push(task);
+    added++;
+  }
+  if (points.length) {
+    const hist = JSON.parse(localStorage.getItem('secretary_history') || '[]');
+    hist.unshift({ date: new Date().toISOString(), points });
+    localStorage.setItem('secretary_history', JSON.stringify(hist.slice(0, 30)));
+  }
+  document.getElementById('sec-board-input').value = '';
+  renderBoardHistory();
+  showToast(`タスク${added}件を追加しました ✅`, 'ok');
+  if (added > 0) renderDashboard();
+}
+
+function parseClaudeReply(text) {
+  const taskSec  = text.match(/【タスク】([\s\S]*?)(?=【|$)/);
+  const pointSec = text.match(/【要点】([\s\S]*?)(?=【|$)/);
+  const parsedTasks = [];
+  const points = [];
+  if (taskSec) {
+    for (const line of taskSec[1].split('\n')) {
+      const c = line.replace(/^[\s・\-•*]+/, '').trim();
+      if (c) parsedTasks.push(parseTaskLine(c));
+    }
+  }
+  if (pointSec) {
+    for (const line of pointSec[1].split('\n')) {
+      const c = line.replace(/^[\s・\-•*]+/, '').trim();
+      if (c) points.push(c);
+    }
+  }
+  return { tasks: parsedTasks, points };
+}
+
+function parseTaskLine(text) {
+  let urgency = '中';
+  if (/優先度[：:]\s*高|高優先|至急|緊急/.test(text)) urgency = '高';
+  else if (/優先度[：:]\s*低|低優先/.test(text))       urgency = '低';
+
+  let deadline = '';
+  const now = new Date();
+  const dm = text.match(/(\d{1,2})[\/月](\d{1,2})/);
+  if (dm) {
+    deadline = `${now.getFullYear()}-${dm[1].padStart(2,'0')}-${dm[2].padStart(2,'0')}`;
+  } else if (/今日|本日/.test(text)) {
+    deadline = today();
+  } else if (/明日/.test(text)) {
+    const t = new Date(); t.setDate(t.getDate()+1);
+    deadline = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  } else if (/今週|週内/.test(text)) {
+    deadline = weekEnd();
   }
 
-  document.getElementById('secretary-content').innerHTML = `
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:600;">${dateStr}のブリーフィング</div>
-    <div class="sec-card">
-      <div class="sec-card-title">📅 Googleカレンダー</div>
-      <div class="sec-empty-msg">
-        <a href="https://calendar.google.com" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600;">Googleカレンダーを開く →</a>
+  const title = text.replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim() || text;
+  return { title, urgency, importance: '中', deadline };
+}
+
+function renderBoardHistory() {
+  const el = document.getElementById('sec-board-history');
+  if (!el) return;
+  const hist = JSON.parse(localStorage.getItem('secretary_history') || '[]');
+  if (!hist.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="sec-title" style="margin-bottom:10px;">過去の要点</div>
+    ${hist.map(h => `
+      <div class="sec-hist-item">
+        <div class="sec-hist-date">📅 ${formatDateTimeJP(h.date)}</div>
+        ${h.points.map(p => `<div class="sec-hist-point">${esc(p)}</div>`).join('')}
       </div>
-    </div>
-    <div class="sec-card">
-      <div class="sec-card-title">🔄 今日の習慣タスク（${habitToday.length}件）</div>
-      ${habitToday.length ? habitToday.map(taskRow).join('') : '<div class="sec-empty-msg">今日の習慣タスクはありません</div>'}
-    </div>
-    <div class="sec-card">
-      <div class="sec-card-title">⏰ 締切が近いタスク（今日・明日・今週）</div>
-      ${urgentTasks.length ? sortTasks(urgentTasks).slice(0,10).map(taskRow).join('') : '<div class="sec-empty-msg">締切が近いタスクはありません</div>'}
-    </div>
-    <div class="sec-card">
-      <div class="sec-card-title">📋 未完了の引き継ぎ事項（${handovers.length}件）</div>
-      ${handovers.length ? sortTasks(handovers).map(taskRow).join('') : '<div class="sec-empty-msg">未完了の引き継ぎ事項はありません</div>'}
-    </div>
+    `).join('')}
   `;
 }
 
-function handleSecretaryInput() {
-  const input = document.getElementById('secretary-input').value.trim();
-  document.getElementById('secretary-input').value = '';
-  if (!input || input.includes('業務') || input.includes('今日') || input.includes('教え')) {
-    renderSecretary();
-  } else {
-    showToast('「今日の業務を教えて」と入力してください');
-  }
+function showSecResult(html) {
+  document.getElementById('sec-result-panel').innerHTML = html;
+  document.getElementById('sec-result-panel').style.display = '';
+  document.getElementById('sec-board-panel').style.display = 'none';
 }
 
 // ═══════════════════════════════════════════════
@@ -1489,10 +1765,6 @@ async function init() {
   }, { passive: false });
 
   checkBackupReminder();
-
-  document.getElementById('secretary-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleSecretaryInput();
-  });
 }
 
 init();
