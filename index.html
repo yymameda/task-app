@@ -289,6 +289,9 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 /* ── HABIT BADGE ── */
 .b-habit{background:#EDE9FE;color:#4C1D95;}
 .b-handover{background:#FEF9C3;color:#713F12;}
+.b-asgn-yamada{background:#DBEAFE;color:#1E40AF;}
+.b-asgn-self{background:#FEF9C3;color:#854D0E;}
+.b-asgn-all{background:#F0FDF4;color:#166534;}
 
 /* ── SECRETARY VIEW ── */
 .secretary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
@@ -1047,6 +1050,13 @@ function renderDone() {
 // ═══════════════════════════════════════════════
 //  TASK CARD HTML
 // ═══════════════════════════════════════════════
+function assigneeBadge(a) {
+  if (!a) return '';
+  if (a === '山田') return `<span class="badge b-asgn-yamada">🔵 山田</span>`;
+  if (a === '自分') return `<span class="badge b-asgn-self">⭐ 自分</span>`;
+  return `<span class="badge b-asgn-all">👥 ${esc(a)}</span>`;
+}
+
 function taskCard(t) {
   const dlClass = deadlineClass(t.deadline);
   const dlLabel = deadlineLabel(t.deadline);
@@ -1059,6 +1069,7 @@ function taskCard(t) {
         <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
         <span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span>
         ${t.isHabit ? `<span class="badge b-habit">🔄 習慣</span>` : t.source === '引き継ぎ' ? `<span class="badge b-handover">📋 引き継ぎ</span>` : `<span class="badge bs">${esc(t.source)}</span>`}
+        ${assigneeBadge(t.assignee)}
         ${dlLabel ? `<span class="t-dl ${dlClass}">${dlLabel}</span>` : ''}
       </div>
     </div>
@@ -1081,6 +1092,7 @@ function openModal(id) {
     <div class="d-row"><span class="d-lbl">緊急度</span><span class="d-val"><span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span></span></div>
     <div class="d-row"><span class="d-lbl">重要度</span><span class="d-val"><span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span></span></div>
     <div class="d-row"><span class="d-lbl">期限</span><span class="d-val ${dlClass}">${esc(dlLabel)}</span></div>
+    ${t.assignee ? `<div class="d-row"><span class="d-lbl">担当</span><span class="d-val">${assigneeBadge(t.assignee)}</span></div>` : ''}
     <div class="d-row"><span class="d-lbl">発生元</span><span class="d-val">${esc(t.source)}</span></div>
     ${t.contact ? `<div class="d-row"><span class="d-lbl">連絡先</span><span class="d-val">${esc(t.contact || '')}</span></div>` : ''}
     <div class="d-row"><span class="d-lbl">状態</span><span class="d-val">${esc(t.status)}</span></div>
@@ -1476,17 +1488,55 @@ function getSecretaryPrompt(userText) {
   const base =
 `あなたは小学校教員の有能な秘書です。
 以下の内容（または添付ファイル）を分析して
-以下の形式で整理してください。
+必ず以下の形式で整理してください。
 
 【タスク】
-・タスク名｜期限｜優先度（高・中・低）｜詳細
+・タスク名｜期限｜優先度（高・中・低）｜担当｜詳細
 
 【要点】
 ・箇条書きで簡潔に
 
-期限が「明日」「来週」などの相対表現は
-今日の日付を基準に具体的な日付に変換してください。
-今日は${dateStr}です。`;
+---
+【日付変換ルール】
+今日の日付：${dateStr}
+
+以下の形式を全てYYYY-MM-DD形式に変換すること：
+・4/18 や 4／18 → 今年のYYYY-04-18
+・4月18日 → YYYY-04-18
+・来週月曜 → 具体的な日付
+・来週中 → その週の金曜日
+・今月末 → その月の末日
+・5月連休明け → ${d.getFullYear()}-05-07
+・○日まで → YYYY-MM-DD
+・明日・明後日・今週中 → 具体的な日付
+・手書きメモなど日付が全く読み取れない場合
+　→ 今日の日付（${dateStr}）を自動入力
+・日付が不明・未定と明記されている場合のみ
+　→ 未定
+
+手書きメモのスラッシュ表記（4/18など）は
+必ず日付として解釈すること。
+
+---
+【担当者フィルタリングルール】
+資料の中に役割分担・担当者が明記されている場合：
+・「山田」が担当のタスクのみ抽出する
+・他の担当者（高崎・齋藤・清水・井上など）の
+　タスクは抽出しない
+・担当者が明記されていないタスクは全て抽出する
+・「全員」「学年全体」のタスクは抽出する
+
+担当の値：
+・山田が担当 → 山田
+・担当者不明・全員 → 全員
+・自分（担任）宛 → 自分
+
+---
+【タスク抽出ルール】
+・タスクを1件も漏らさず全て抽出すること
+・「・」「-」「*」で始まる行は全てタスクとして処理
+・期限が解析できない場合は今日の日付を入力
+・タスク名が空の行はスキップ`;
   return userText ? base + '\n\n' + userText : base;
 }
 
@@ -1556,8 +1606,8 @@ async function applyBoardContent() {
       id: genId(), title: pt.title,
       urgency: pt.urgency, importance: pt.importance,
       deadline: pt.deadline, source: '引き継ぎ',
-      contact: '', memo: pt.memo || '', status: '未完了',
-      createdAt: new Date().toISOString(), completedAt: null,
+      contact: '', memo: pt.memo || '', assignee: pt.assignee || '',
+      status: '未完了', createdAt: new Date().toISOString(), completedAt: null,
     };
     await StorageManager.save(task);
     tasks.push(task);
@@ -1594,25 +1644,53 @@ function parseClaudeReply(text) {
   return { tasks: parsedTasks, points };
 }
 
-// 相対日付・具体日付を YYYY-MM-DD に変換
+// 相対日付・具体日付を YYYY-MM-DD に変換（未定は '' を返す）
 function relativeToDate(text) {
   if (!text) return '';
+  const t = text.trim();
+  if (/未定|不明/.test(t)) return '';
+
   const now = new Date();
   const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const add = (n) => { const d = new Date(now); d.setDate(d.getDate()+n); return fmt(d); };
+  // 今週の月曜からのオフセットで「来週の X 曜日」を計算
+  const nextWeekDay = (dow) => {
+    const d = new Date(now);
+    const day = d.getDay();
+    const diffToMon = (day === 0) ? -6 : 1 - day; // 今週月曜への差分
+    d.setDate(d.getDate() + diffToMon + 7 + dow);  // 来週月曜+dow
+    return fmt(d);
+  };
 
-  if (/今日|本日/.test(text))  return today();
-  if (/明後日/.test(text))     return add(2);
-  if (/明日/.test(text))       return add(1);
-  if (/今週|週内/.test(text))  return weekEnd();
-  if (/来週/.test(text))       return add(7);
+  if (/今日|本日/.test(t))  return today();
+  if (/明後日/.test(t))     return add(2);
+  if (/明日/.test(t))       return add(1);
+  if (/今週|週内/.test(t))  return weekEnd();
+  if (/来週.*月曜|来週月/.test(t))  return nextWeekDay(0);
+  if (/来週.*火曜|来週火/.test(t))  return nextWeekDay(1);
+  if (/来週.*水曜|来週水/.test(t))  return nextWeekDay(2);
+  if (/来週.*木曜|来週木/.test(t))  return nextWeekDay(3);
+  if (/来週.*金曜|来週金/.test(t))  return nextWeekDay(4);
+  if (/来週中/.test(t))             return nextWeekDay(4); // 来週金曜
+  if (/来週/.test(t))               return nextWeekDay(0); // デフォルト来週月曜
+  if (/連休明け|GW明け|ゴールデンウィーク明け/.test(t)) return `${now.getFullYear()}-05-07`;
+  if (/今月末/.test(t)) return fmt(new Date(now.getFullYear(), now.getMonth()+1, 0));
+
+  // X月末
+  const me = t.match(/(\d{1,2})月末/);
+  if (me) {
+    const m = parseInt(me[1]);
+    let y = now.getFullYear();
+    if (m < now.getMonth()+1) y++;
+    return fmt(new Date(y, m, 0));
+  }
 
   // YYYY/MM/DD または YYYY-MM-DD
-  const full = text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  const full = t.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if (full) return `${full[1]}-${full[2].padStart(2,'0')}-${full[3].padStart(2,'0')}`;
 
-  // MM/DD または M月D日
-  const dm = text.match(/(\d{1,2})[\/月](\d{1,2})/);
+  // M/D、M／D（全角スラッシュ）、M月D日
+  const dm = t.match(/(\d{1,2})[\/／月](\d{1,2})/);
   if (dm) {
     const m = parseInt(dm[1]), day = parseInt(dm[2]);
     let y = now.getFullYear();
@@ -1623,21 +1701,29 @@ function relativeToDate(text) {
   return '';
 }
 
-// タスク行をパース（タスク名｜期限｜優先度｜詳細 形式対応）
+// タスク行をパース（タスク名｜期限｜優先度｜担当｜詳細 形式対応）
 function parseTaskLine(text) {
   const parts = text.split('｜').map(s => s.trim());
   const rawTitle    = parts[0] || text;
   const rawDeadline = parts[1] || '';
   const rawUrgency  = parts[2] || '';
-  const rawMemo     = parts[3] || '';
+  const rawAssignee = parts[3] || '';
+  const rawMemo     = parts[4] || '';
 
   let urgency = '中';
   if (/高/.test(rawUrgency) || /至急|緊急/.test(rawTitle)) urgency = '高';
   else if (/低/.test(rawUrgency)) urgency = '低';
 
-  const deadline = relativeToDate(rawDeadline) || relativeToDate(rawTitle);
-  const title    = rawTitle.replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim() || rawTitle;
-  return { title, urgency, importance: '中', deadline, memo: rawMemo };
+  // 未定 → '' 、解析不能 → today() をフォールバック
+  let deadline;
+  if (/未定|不明/.test(rawDeadline)) {
+    deadline = '';
+  } else {
+    deadline = relativeToDate(rawDeadline) || relativeToDate(rawTitle) || today();
+  }
+
+  const title = rawTitle.replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim() || rawTitle;
+  return { title, urgency, importance: '中', deadline, assignee: rawAssignee, memo: rawMemo };
 }
 
 function renderBoardHistory() {
