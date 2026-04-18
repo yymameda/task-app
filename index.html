@@ -286,6 +286,16 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .wall-task-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;}
 #wall-footer{font-size:12px;color:var(--muted);text-align:center;margin-top:20px;cursor:pointer;}
 
+/* ── HABIT BADGE ── */
+.b-habit{background:#EDE9FE;color:#4C1D95;}
+.b-handover{background:#FEF9C3;color:#713F12;}
+
+/* ── SECRETARY VIEW ── */
+.sec-input-row{display:flex;gap:8px;margin-bottom:16px;}
+.sec-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);margin-bottom:14px;}
+.sec-card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.sec-empty-msg{font-size:13px;color:var(--muted);padding:4px 0;}
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -320,6 +330,10 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   <button class="nav-btn" data-view="backup" onclick="nav('backup')">
     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.52"/><line x1="12" y1="8" x2="12" y2="12"/><polyline points="12 12 15 15"/></svg>
     <span>バック</span>
+  </button>
+  <button class="nav-btn" data-view="secretary" onclick="nav('secretary')">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>秘書</span>
   </button>
 </nav>
 
@@ -389,6 +403,7 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
               <option value="児童">児童</option>
               <option value="保護者">保護者</option>
               <option value="管理職">管理職</option>
+              <option value="引き継ぎ">引き継ぎ</option>
             </select>
           </div>
         </div>
@@ -464,6 +479,18 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
       <div id="wall-future-list"></div>
     </div>
     <div id="wall-footer" onclick="nav('add')">タップして追加 →</div>
+  </div>
+
+  <!-- ⑦ SECRETARY -->
+  <div class="view" id="view-secretary">
+    <h1 class="page-title">AI秘書</h1>
+    <div class="sec-input-row">
+      <input type="text" id="secretary-input" placeholder="「今日の業務を教えて」と入力" autocorrect="off" autocapitalize="off" style="flex:1;">
+      <button class="btn btn-p" onclick="handleSecretaryInput()" style="padding:12px 16px;flex-shrink:0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+    <div id="secretary-content"></div>
   </div>
 
   <!-- ⑥ BACKUP -->
@@ -682,6 +709,21 @@ const CryptoManager = (() => {
 })();
 
 // ═══════════════════════════════════════════════
+//  HABIT DEFINITIONS（後から追加可能）
+// ═══════════════════════════════════════════════
+const HABIT_DEFINITIONS = [
+  { key: 'daily_health',     title: '体調確認',                     schedule: 'daily',          urgency: '中', importance: '中' },
+  { key: 'daily_homework',   title: '宿題チェック',                 schedule: 'daily',          urgency: '中', importance: '中' },
+  { key: 'mon_cleaning',     title: '掃除担当表作成',               schedule: 'weekday', day: 1, urgency: '低', importance: '中' },
+  { key: 'tue_meeting',      title: '学年会議',                     schedule: 'weekday', day: 2, urgency: '中', importance: '高' },
+  { key: 'wed_support',      title: '登校しぶり児童への放課後対応', schedule: 'weekday', day: 3, urgency: '高', importance: '高' },
+  { key: 'fri_dist',         title: '予定表配布',                   schedule: 'weekday', day: 5, urgency: '中', importance: '中' },
+  { key: 'fri_absent',       title: '欠席児童への予定表配信',       schedule: 'weekday', day: 5, urgency: '中', importance: '中' },
+  { key: 'month1_committee', title: '拡大運営委員会資料作成',       schedule: 'monthly_week1',  urgency: '高', importance: '高' },
+  { key: 'month1_staff',     title: '職員会議資料作成',             schedule: 'monthly_week1',  urgency: '高', importance: '高' },
+];
+
+// ═══════════════════════════════════════════════
 //  APP STATE
 // ═══════════════════════════════════════════════
 let tasks = [];
@@ -790,6 +832,7 @@ function nav(view) {
   if (view === 'list')      renderList();
   if (view === 'done')      renderDone();
   if (view === 'wall')      { renderWall(); acquireWakeLock(); }
+  if (view === 'secretary') { renderSecretary(); }
   if (view === 'backup')    {}
   if (view === 'add' && !editingId) {
     if (isDuplicate) { isDuplicate = false; }
@@ -957,7 +1000,7 @@ function taskCard(t) {
       <div class="t-meta">
         <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
         <span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span>
-        <span class="badge bs">${esc(t.source)}</span>
+        ${t.isHabit ? `<span class="badge b-habit">🔄 習慣</span>` : t.source === '引き継ぎ' ? `<span class="badge b-handover">📋 引き継ぎ</span>` : `<span class="badge bs">${esc(t.source)}</span>`}
         ${dlLabel ? `<span class="t-dl ${dlClass}">${dlLabel}</span>` : ''}
       </div>
     </div>
@@ -1166,9 +1209,10 @@ function confirmPwd() {
 }
 
 function refreshCurrentView() {
-  if (currentView === 'dashboard') renderDashboard();
-  else if (currentView === 'list') renderList();
-  else if (currentView === 'done') renderDone();
+  if      (currentView === 'dashboard') renderDashboard();
+  else if (currentView === 'list')      renderList();
+  else if (currentView === 'done')      renderDone();
+  else if (currentView === 'secretary') renderSecretary();
 }
 
 // ═══════════════════════════════════════════════
@@ -1322,14 +1366,118 @@ function checkBackupReminder() {
 }
 
 // ═══════════════════════════════════════════════
+//  HABIT TASK AUTO-GENERATION
+// ═══════════════════════════════════════════════
+async function generateHabitTasks() {
+  const todayStr = today();
+  const d   = new Date();
+  const dow = d.getDay();   // 0=日 1=月 2=火 3=水 4=木 5=金 6=土
+  const dom = d.getDate();  // day of month
+  const isWeek1 = dom >= 1 && dom <= 7;
+
+  let added = 0;
+  for (const h of HABIT_DEFINITIONS) {
+    let applies = false;
+    if      (h.schedule === 'daily')          applies = true;
+    else if (h.schedule === 'weekday'        && h.day === dow)  applies = true;
+    else if (h.schedule === 'monthly_week1'  && isWeek1)        applies = true;
+    if (!applies) continue;
+
+    const habitId = `habit_${h.key}_${todayStr}`;
+    if (tasks.find(t => t.id === habitId)) continue;
+
+    const task = {
+      id: habitId, title: h.title,
+      urgency: h.urgency, importance: h.importance,
+      deadline: todayStr, source: '習慣', contact: '', memo: '',
+      status: '未完了', createdAt: new Date().toISOString(), completedAt: null,
+      isHabit: true,
+    };
+    await StorageManager.save(task);
+    tasks.push(task);
+    added++;
+  }
+  if (added > 0) refreshCurrentView();
+}
+
+function watchDateChange() {
+  let lastDate = today();
+  setInterval(() => {
+    const now = today();
+    if (now !== lastDate) { lastDate = now; generateHabitTasks(); }
+  }, 60000);
+}
+
+// ═══════════════════════════════════════════════
+//  AI SECRETARY MODE
+// ═══════════════════════════════════════════════
+function renderSecretary() {
+  const todayStr = today();
+  const tom = new Date(); tom.setDate(tom.getDate() + 1);
+  const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth()+1).padStart(2,'0')}-${String(tom.getDate()).padStart(2,'0')}`;
+  const we = weekEnd();
+  const d  = new Date();
+  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+
+  const active     = tasks.filter(x => x.status !== '完了');
+  const habitToday = tasks.filter(x => x.isHabit && x.deadline === todayStr);
+  const urgentTasks = active.filter(x => !x.isHabit && x.deadline && x.deadline <= we);
+  const handovers   = active.filter(x => x.source === '引き継ぎ');
+
+  function taskRow(t) {
+    return `<div class="task-item urg-${esc(t.urgency)} ${t.status==='完了'?'done-item':''}" style="margin-bottom:6px;" onclick="openModal('${esc(t.id)}')">
+      <div class="t-check ${t.status==='完了'?'checked':''}" onclick="event.stopPropagation();toggleDone('${esc(t.id)}')"></div>
+      <div class="t-body">
+        <div class="t-title">${esc(t.title)}</div>
+        ${t.deadline ? `<div class="t-meta"><span class="t-dl ${deadlineClass(t.deadline)}">${deadlineLabel(t.deadline)}</span></div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('secretary-content').innerHTML = `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:600;">${dateStr}のブリーフィング</div>
+    <div class="sec-card">
+      <div class="sec-card-title">📅 Googleカレンダー</div>
+      <div class="sec-empty-msg">
+        <a href="https://calendar.google.com" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600;">Googleカレンダーを開く →</a>
+      </div>
+    </div>
+    <div class="sec-card">
+      <div class="sec-card-title">🔄 今日の習慣タスク（${habitToday.length}件）</div>
+      ${habitToday.length ? habitToday.map(taskRow).join('') : '<div class="sec-empty-msg">今日の習慣タスクはありません</div>'}
+    </div>
+    <div class="sec-card">
+      <div class="sec-card-title">⏰ 締切が近いタスク（今日・明日・今週）</div>
+      ${urgentTasks.length ? sortTasks(urgentTasks).slice(0,10).map(taskRow).join('') : '<div class="sec-empty-msg">締切が近いタスクはありません</div>'}
+    </div>
+    <div class="sec-card">
+      <div class="sec-card-title">📋 未完了の引き継ぎ事項（${handovers.length}件）</div>
+      ${handovers.length ? sortTasks(handovers).map(taskRow).join('') : '<div class="sec-empty-msg">未完了の引き継ぎ事項はありません</div>'}
+    </div>
+  `;
+}
+
+function handleSecretaryInput() {
+  const input = document.getElementById('secretary-input').value.trim();
+  document.getElementById('secretary-input').value = '';
+  if (!input || input.includes('業務') || input.includes('今日') || input.includes('教え')) {
+    renderSecretary();
+  } else {
+    showToast('「今日の業務を教えて」と入力してください');
+  }
+}
+
+// ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
 async function init() {
   await StorageManager.initDB();
   tasks = await StorageManager.getAll();
+  await generateHabitTasks();
   const lastView = localStorage.getItem('last_view') || 'wall';
   nav(lastView);
   registerSW();
+  watchDateChange();
 
   // Set today as default deadline
   document.getElementById('f-deadline').value = today();
@@ -1341,6 +1489,10 @@ async function init() {
   }, { passive: false });
 
   checkBackupReminder();
+
+  document.getElementById('secretary-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleSecretaryInput();
+  });
 }
 
 init();
