@@ -499,12 +499,19 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   <div class="view" id="view-secretary">
     <h1 class="page-title">AI秘書</h1>
 
-    <!-- 4 big action buttons -->
-    <div class="secretary-grid">
-      <button class="sec-action-btn" id="sec-btn-voice" onclick="startVoiceInput()">
-        <span class="sec-btn-icon">🎤</span>
-        <span class="sec-btn-label">音声入力</span>
+    <!-- テキスト入力エリア -->
+    <div class="card" style="margin-bottom:14px;">
+      <div class="form-group" style="margin-bottom:10px;">
+        <textarea id="sec-text-input" rows="4" placeholder="ここをタップしてキーボードの🎤で音声入力" style="font-size:16px;line-height:1.6;resize:none;"></textarea>
+      </div>
+      <button class="btn btn-p btn-w" onclick="sendTextToSecretary()" style="margin-bottom:0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Claudeに送る
       </button>
+    </div>
+
+    <!-- 3 action buttons -->
+    <div class="secretary-grid">
       <button class="sec-action-btn" id="sec-btn-camera" onclick="startCameraCapture()">
         <span class="sec-btn-icon">📷</span>
         <span class="sec-btn-label">カメラスキャン</span>
@@ -513,7 +520,7 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
         <span class="sec-btn-icon">📄</span>
         <span class="sec-btn-label">PDF読み込み</span>
       </button>
-      <button class="sec-action-btn" id="sec-btn-board" onclick="showSecBoard()">
+      <button class="sec-action-btn" id="sec-btn-board" onclick="showSecBoard()" style="grid-column:span 2;">
         <span class="sec-btn-icon">📋</span>
         <span class="sec-btn-label">秘書ボード</span>
       </button>
@@ -1469,50 +1476,18 @@ const SECRETARY_PROMPT =
 
 `;
 
-let _recognition = null;
-
 function renderSecretary() {
   document.getElementById('sec-result-panel').style.display = 'none';
   document.getElementById('sec-board-panel').style.display = '';
   renderBoardHistory();
 }
 
-// ── ① 音声入力 ──────────────────────────────────
-function startVoiceInput() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { showToast('このブラウザは音声入力に対応していません', 'err'); return; }
-  const btn = document.getElementById('sec-btn-voice');
-  if (_recognition) { _recognition.stop(); return; }
-
-  _recognition = new SR();
-  _recognition.lang = 'ja-JP';
-  _recognition.continuous = false;
-  _recognition.interimResults = false;
-  btn.classList.add('recording');
-
-  showSecResult(`<div class="sec-status-card" style="text-align:center;padding:28px;">
-    <div style="font-size:28px;margin-bottom:8px;">🎤</div>
-    <div style="font-weight:700;margin-bottom:4px;">聞き取り中…</div>
-    <div style="font-size:12px;color:var(--muted);">もう一度タップで停止</div>
-  </div>`);
-
-  _recognition.onresult = (e) => {
-    const text = e.results[0][0].transcript;
-    btn.classList.remove('recording');
-    _recognition = null;
-    sendToClaudeText(text);
-  };
-  _recognition.onerror = (e) => {
-    btn.classList.remove('recording');
-    _recognition = null;
-    showToast('音声入力エラー: ' + e.error, 'err');
-    showSecBoard();
-  };
-  _recognition.onend = () => {
-    btn.classList.remove('recording');
-    _recognition = null;
-  };
-  _recognition.start();
+// ── ① テキスト入力 ────────────────────────────────
+function sendTextToSecretary() {
+  const text = document.getElementById('sec-text-input').value.trim();
+  if (!text) { showToast('テキストを入力してください', 'err'); return; }
+  document.getElementById('sec-text-input').value = '';
+  sendToClaudeText(text);
 }
 
 // ── ② カメラスキャン ────────────────────────────
