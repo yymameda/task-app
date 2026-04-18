@@ -81,38 +81,37 @@ body{
   padding:20px 0 12px;margin-bottom:8px;
 }
 #glb-title{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-#glb-search-btn{
-  width:46px;height:46px;border:none;background:var(--card);
-  border-radius:13px;font-size:22px;cursor:pointer;flex-shrink:0;
-  box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;
-  transition:transform .15s;margin-left:10px;
+/* ── SEARCH WRAP (inline in header) ── */
+#glb-search-wrap{
+  flex:1;max-width:340px;display:flex;align-items:center;gap:8px;
+  background:var(--card);border:2px solid transparent;
+  border-radius:14px;padding:0 12px;height:48px;
+  box-shadow:var(--shadow);margin-left:14px;
+  transition:border-color .2s;
 }
-#glb-search-btn:active{transform:scale(.92);}
+#glb-search-wrap:focus-within{border-color:var(--primary);}
+#glb-search-icon{font-size:19px;opacity:.5;flex-shrink:0;pointer-events:none;}
+#search-input{
+  flex:1;border:none;background:transparent;outline:none;
+  font-size:16px;font-family:inherit;color:var(--text);min-width:0;padding:0;
+}
+#search-input::placeholder{color:#bbb;}
+#search-clear-btn{
+  display:none;border:none;background:transparent;
+  font-size:18px;font-weight:700;cursor:pointer;
+  color:#999;padding:2px 0;flex-shrink:0;line-height:1;
+}
 
-/* ── SEARCH OVERLAY ── */
+/* ── SEARCH OVERLAY (results, positioned below header via JS) ── */
 #search-overlay{
   display:none;position:fixed;
-  top:0;left:var(--sidebar-w);right:0;bottom:0;
+  left:var(--sidebar-w);right:0;bottom:0;
   background:var(--bg);z-index:400;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
-  padding:0 20px calc(32px + var(--safe-bottom)) 20px;
+  padding:12px 20px calc(32px + var(--safe-bottom)) 20px;
+  border-top:2px solid var(--primary);
 }
 #search-overlay.open{display:block;}
-#search-header-bar{
-  position:sticky;top:0;background:var(--bg);
-  padding:16px 0 10px;display:flex;gap:10px;align-items:center;z-index:1;
-}
-#search-input{
-  flex:1;padding:13px 16px;border:2.5px solid var(--primary);
-  border-radius:13px;font-size:16px;font-family:inherit;
-  color:var(--text);background:#fff;outline:none;
-}
-#search-close-btn{
-  width:48px;height:48px;border:none;background:#E8EDF2;
-  border-radius:13px;font-size:17px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  color:var(--text);flex-shrink:0;
-}
 #search-count-bar{
   display:none;font-size:13px;font-weight:700;color:var(--primary);
   background:var(--card);border-radius:9px;padding:7px 14px;
@@ -405,7 +404,12 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   <!-- GLOBAL HEADER -->
   <div id="glb-header">
     <span id="glb-title">AI秘書</span>
-    <button id="glb-search-btn" onclick="toggleSearch()" aria-label="検索">🔍</button>
+    <div id="glb-search-wrap">
+      <span id="glb-search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="検索..."
+        autocorrect="off" autocapitalize="none" autocomplete="off">
+      <button id="search-clear-btn" onclick="clearSearch()" aria-label="クリア">✕</button>
+    </div>
   </div>
 
   <!-- ① DASHBOARD -->
@@ -675,12 +679,6 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 
 <!-- SEARCH OVERLAY -->
 <div id="search-overlay">
-  <div id="search-header-bar">
-    <input type="text" id="search-input"
-      placeholder="タスク・メモ・担当・要点で検索…"
-      autocorrect="off" autocapitalize="none" autocomplete="off">
-    <button id="search-close-btn" onclick="closeSearch()">✕</button>
-  </div>
   <div id="search-count-bar"></div>
   <div id="search-results"></div>
 </div>
@@ -951,23 +949,34 @@ function setGlbTitle(title) {
 // ═══════════════════════════════════════════════
 //  GLOBAL SEARCH
 // ═══════════════════════════════════════════════
-function toggleSearch() {
-  document.getElementById('search-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('search-input').focus(), 150);
-}
-
-function closeSearch() {
+function clearSearch() {
+  const inp = document.getElementById('search-input');
+  inp.value = '';
+  document.getElementById('search-clear-btn').style.display = 'none';
   document.getElementById('search-overlay').classList.remove('open');
-  document.getElementById('search-input').value = '';
   document.getElementById('search-results').innerHTML = '';
   document.getElementById('search-count-bar').style.display = 'none';
 }
 
+function _openSearchOverlay() {
+  const hdr = document.getElementById('glb-header');
+  const top = hdr ? hdr.getBoundingClientRect().bottom : 70;
+  const ov  = document.getElementById('search-overlay');
+  ov.style.top = top + 'px';
+  ov.classList.add('open');
+}
+
 function performSearch() {
-  const q  = document.getElementById('search-input').value.trim().toLowerCase();
-  const cb = document.getElementById('search-count-bar');
-  const re = document.getElementById('search-results');
-  if (!q) { cb.style.display = 'none'; re.innerHTML = ''; return; }
+  const inp = document.getElementById('search-input');
+  const q   = inp.value.trim().toLowerCase();
+  const cb  = document.getElementById('search-count-bar');
+  const re  = document.getElementById('search-results');
+  const clr = document.getElementById('search-clear-btn');
+  clr.style.display = q ? 'block' : 'none';
+  if (!q) {
+    document.getElementById('search-overlay').classList.remove('open');
+    cb.style.display = 'none'; re.innerHTML = ''; return;
+  }
 
   const matched = tasks.filter(t =>
     (t.title    || '').toLowerCase().includes(q) ||
@@ -1017,6 +1026,7 @@ function performSearch() {
     </div>`).join('');
   }
   re.innerHTML = html;
+  _openSearchOverlay();
 }
 
 // ═══════════════════════════════════════════════
