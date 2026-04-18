@@ -64,15 +64,60 @@ body{
 #main{
   flex:1;overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
-  padding:24px 20px calc(32px + var(--safe-bottom)) 20px;
+  padding:0 20px calc(32px + var(--safe-bottom)) 20px;
   min-width:0;
 }
 .view{display:none;animation:fadeIn .2s ease;}
 .view.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── PAGE TITLE ── */
-.page-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:20px;letter-spacing:-.3px;}
+/* ── PAGE TITLE（グローバルヘッダーに移管） ── */
+.page-title{display:none;}
+
+/* ── GLOBAL HEADER ── */
+#glb-header{
+  position:sticky;top:0;background:var(--bg);z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 0 12px;margin-bottom:8px;
+}
+#glb-title{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#glb-search-btn{
+  width:46px;height:46px;border:none;background:var(--card);
+  border-radius:13px;font-size:22px;cursor:pointer;flex-shrink:0;
+  box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;margin-left:10px;
+}
+#glb-search-btn:active{transform:scale(.92);}
+
+/* ── SEARCH OVERLAY ── */
+#search-overlay{
+  display:none;position:fixed;
+  top:0;left:var(--sidebar-w);right:0;bottom:0;
+  background:var(--bg);z-index:400;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:0 20px calc(32px + var(--safe-bottom)) 20px;
+}
+#search-overlay.open{display:block;}
+#search-header-bar{
+  position:sticky;top:0;background:var(--bg);
+  padding:16px 0 10px;display:flex;gap:10px;align-items:center;z-index:1;
+}
+#search-input{
+  flex:1;padding:13px 16px;border:2.5px solid var(--primary);
+  border-radius:13px;font-size:16px;font-family:inherit;
+  color:var(--text);background:#fff;outline:none;
+}
+#search-close-btn{
+  width:48px;height:48px;border:none;background:#E8EDF2;
+  border-radius:13px;font-size:17px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text);flex-shrink:0;
+}
+#search-count-bar{
+  display:none;font-size:13px;font-weight:700;color:var(--primary);
+  background:var(--card);border-radius:9px;padding:7px 14px;
+  margin-bottom:14px;box-shadow:var(--shadow);
+}
 
 /* ── STAT CARDS ── */
 .card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
@@ -357,6 +402,12 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 <!-- MAIN -->
 <main id="main">
 
+  <!-- GLOBAL HEADER -->
+  <div id="glb-header">
+    <span id="glb-title">AI秘書</span>
+    <button id="glb-search-btn" onclick="toggleSearch()" aria-label="検索">🔍</button>
+  </div>
+
   <!-- ① DASHBOARD -->
   <div class="view active" id="view-dashboard">
     <h1 class="page-title">ダッシュボード</h1>
@@ -622,6 +673,18 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 <!-- TOAST -->
 <div id="toast-cont"></div>
 
+<!-- SEARCH OVERLAY -->
+<div id="search-overlay">
+  <div id="search-header-bar">
+    <input type="text" id="search-input"
+      placeholder="タスク・メモ・担当・要点で検索…"
+      autocorrect="off" autocapitalize="none" autocomplete="off">
+    <button id="search-close-btn" onclick="closeSearch()">✕</button>
+  </div>
+  <div id="search-count-bar"></div>
+  <div id="search-results"></div>
+</div>
+
 <script>
 'use strict';
 
@@ -873,6 +936,90 @@ function showToast(msg, type='') {
 }
 
 // ═══════════════════════════════════════════════
+//  GLOBAL HEADER TITLE
+// ═══════════════════════════════════════════════
+const _VIEW_TITLES = {
+  dashboard:'ダッシュボード', list:'タスク一覧', done:'完了済み',
+  wall:'壁紙モード', secretary:'AI秘書', backup:'バックアップ',
+};
+
+function setGlbTitle(title) {
+  const el = document.getElementById('glb-title');
+  if (el) el.textContent = title;
+}
+
+// ═══════════════════════════════════════════════
+//  GLOBAL SEARCH
+// ═══════════════════════════════════════════════
+function toggleSearch() {
+  document.getElementById('search-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('search-input').focus(), 150);
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('open');
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  document.getElementById('search-count-bar').style.display = 'none';
+}
+
+function performSearch() {
+  const q  = document.getElementById('search-input').value.trim().toLowerCase();
+  const cb = document.getElementById('search-count-bar');
+  const re = document.getElementById('search-results');
+  if (!q) { cb.style.display = 'none'; re.innerHTML = ''; return; }
+
+  const matched = tasks.filter(t =>
+    (t.title    || '').toLowerCase().includes(q) ||
+    (t.memo     || '').toLowerCase().includes(q) ||
+    (t.source   || '').toLowerCase().includes(q) ||
+    (t.contact  || '').toLowerCase().includes(q) ||
+    (t.assignee || '').toLowerCase().includes(q)
+  );
+  const hist = JSON.parse(localStorage.getItem('secretary_history') || '[]');
+  const histHits = hist.reduce((acc, h) => {
+    const pts = h.points.filter(p => p.toLowerCase().includes(q));
+    if (pts.length) acc.push({ date: h.date, points: pts });
+    return acc;
+  }, []);
+  const histCount = histHits.reduce((n, h) => n + h.points.length, 0);
+  const total = matched.length + histCount;
+
+  if (total === 0) {
+    cb.textContent = '0件'; cb.style.display = '';
+    re.innerHTML = `<div class="empty"><div class="ei">🔍</div><p>該当するタスクはありません</p></div>`;
+    return;
+  }
+  cb.textContent = `${total}件見つかりました`; cb.style.display = '';
+
+  const active = matched.filter(t => t.status !== '完了');
+  const done   = matched.filter(t => t.status === '完了');
+  let html = '';
+  if (active.length) {
+    html += `<div class="sec-title" style="margin-bottom:8px;">未完了タスク（${active.length}件）</div>`;
+    html += sortTasks(active).map(t => taskCard(t)).join('');
+  }
+  if (done.length) {
+    html += `<div class="sec-title" style="margin:14px 0 8px;">完了済み（${done.length}件）</div>`;
+    html += done.map(t => `<div class="done-card" onclick="openModal('${esc(t.id)}')">
+      <div class="done-title">${esc(t.title)}</div>
+      <div class="done-meta">
+        <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
+        ${t.completedAt ? `<span>✅ ${formatDateTimeJP(t.completedAt)}</span>` : ''}
+      </div>
+    </div>`).join('');
+  }
+  if (histHits.length) {
+    html += `<div class="sec-title" style="margin:14px 0 8px;">要点履歴（${histCount}件）</div>`;
+    html += histHits.map(h => `<div class="sec-hist-item">
+      <div class="sec-hist-date">📅 ${formatDateTimeJP(h.date)}</div>
+      ${h.points.map(p => `<div class="sec-hist-point">${esc(p)}</div>`).join('')}
+    </div>`).join('');
+  }
+  re.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════════════
 function nav(view) {
@@ -886,6 +1033,11 @@ function nav(view) {
   currentView = view;
   const saveView = (view === 'add') ? 'dashboard' : view;
   localStorage.setItem('last_view', saveView);
+  let glbTitle = _VIEW_TITLES[view] || _VIEW_TITLES[saveView] || '';
+  if (view === 'add') {
+    glbTitle = editingId ? 'タスクを編集' : isDuplicate ? 'タスクを追加（複製）' : 'タスクを追加';
+  }
+  setGlbTitle(glbTitle);
   if (view === 'dashboard') renderDashboard();
   if (view === 'list')      renderList();
   if (view === 'done')      renderDone();
@@ -1770,6 +1922,8 @@ async function init() {
   }, { passive: false });
 
   checkBackupReminder();
+
+  document.getElementById('search-input').addEventListener('input', performSearch);
 }
 
 init();
