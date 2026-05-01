@@ -840,14 +840,20 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 // ═══════════════════════════════════════════════
 //  STORAGE MANAGER (IndexedDB + localStorage)
 // ═══════════════════════════════════════════════
+const IS_STANDALONE =
+  navigator.standalone === true ||
+  window.matchMedia('(display-mode: standalone)').matches;
+
 const StorageManager = (() => {
   const DB_NAME = 'TeacherTasksDB';
   const DB_VER  = 1;
   const STORE   = 'tasks';
   const LS_KEY  = 'teacher_tasks_v1';
   let _db = null;
+  let _mem = [];
 
   function initDB() {
+    if (!IS_STANDALONE) return Promise.resolve(false);
     return new Promise((resolve) => {
       if (!window.indexedDB) { resolve(false); return; }
       const req = indexedDB.open(DB_NAME, DB_VER);
@@ -901,16 +907,23 @@ const StorageManager = (() => {
   }
 
   function lsGetAll() {
+    if (!IS_STANDALONE) return _mem;
     try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
     catch { return []; }
   }
   function lsSave(task) {
+    if (!IS_STANDALONE) {
+      const i = _mem.findIndex(t => t.id === task.id);
+      if (i >= 0) _mem[i] = task; else _mem.push(task);
+      return;
+    }
     const tasks = lsGetAll();
     const i = tasks.findIndex(t => t.id === task.id);
     if (i >= 0) tasks[i] = task; else tasks.push(task);
     localStorage.setItem(LS_KEY, JSON.stringify(tasks));
   }
   function lsRemove(id) {
+    if (!IS_STANDALONE) { _mem = _mem.filter(t => t.id !== id); return; }
     localStorage.setItem(LS_KEY, JSON.stringify(lsGetAll().filter(t => t.id !== id)));
   }
 
@@ -1136,7 +1149,7 @@ function performSearch() {
     (t.contact  || '').toLowerCase().includes(q) ||
     (t.assignee || '').toLowerCase().includes(q)
   );
-  const hist = JSON.parse(localStorage.getItem('secretary_history') || '[]');
+  const hist = IS_STANDALONE ? JSON.parse(localStorage.getItem('secretary_history') || '[]') : [];
   const histHits = hist.reduce((acc, h) => {
     const pts = h.points.filter(p => p.toLowerCase().includes(q));
     if (pts.length) acc.push({ date: h.date, points: pts });
@@ -1203,7 +1216,7 @@ function nav(view) {
   }
   currentView = view;
   const saveView = (view === 'add') ? 'dashboard' : view;
-  localStorage.setItem('last_view', saveView);
+  if (IS_STANDALONE) localStorage.setItem('last_view', saveView);
   let glbTitle = _VIEW_TITLES[view] || '';
   if (view === 'add') {
     glbTitle = editingId ? 'タスクを編集' : isDuplicate ? 'タスクを追加（複製）' : 'タスクを追加';
@@ -2391,9 +2404,9 @@ async function applyBoardContent() {
     added++;
   }
   if (points.length) {
-    const hist = JSON.parse(localStorage.getItem('secretary_history') || '[]');
+    const hist = IS_STANDALONE ? JSON.parse(localStorage.getItem('secretary_history') || '[]') : [];
     hist.unshift({ date: new Date().toISOString(), points });
-    localStorage.setItem('secretary_history', JSON.stringify(hist.slice(0, 30)));
+    if (IS_STANDALONE) localStorage.setItem('secretary_history', JSON.stringify(hist.slice(0, 30)));
   }
   document.getElementById('sec-board-input').value = '';
   renderBoardHistory();
@@ -2506,7 +2519,7 @@ function parseTaskLine(text) {
 function renderBoardHistory() {
   const el = document.getElementById('sec-board-history');
   if (!el) return;
-  const hist = JSON.parse(localStorage.getItem('secretary_history') || '[]');
+  const hist = IS_STANDALONE ? JSON.parse(localStorage.getItem('secretary_history') || '[]') : [];
   if (!hist.length) { el.innerHTML = ''; return; }
   el.innerHTML = `
     <div class="sec-title" style="margin-bottom:10px;">過去の要点</div>
@@ -2532,7 +2545,7 @@ async function init() {
   await StorageManager.initDB();
   tasks = await StorageManager.getAll();
   await migrateHabitTasks();
-  const lastView = localStorage.getItem('last_view') || 'dashboard';
+  const lastView = IS_STANDALONE ? (localStorage.getItem('last_view') || 'dashboard') : 'dashboard';
   nav(lastView);
   await cleanLegacyHabitTasks();
   registerSW();
