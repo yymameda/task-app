@@ -207,6 +207,13 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   color:var(--muted);pointer-events:none;font-size:13px;
 }
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.repeat-days{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.day-chip{
+  padding:6px 11px;border-radius:20px;font-size:13px;font-weight:700;
+  border:2px solid var(--border);background:#fff;cursor:pointer;color:var(--muted);
+  font-family:inherit;transition:background .15s,color .15s,border-color .15s;
+}
+.day-chip.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
 
 /* ── BUTTONS ── */
 .btn{
@@ -487,6 +494,31 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
       <div class="form-group">
         <label class="fl">メモ</label>
         <textarea id="f-memo" placeholder="詳細や連絡事項など…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="fl">繰り返し</label>
+        <div class="sel-wrap">
+          <select id="f-repeat-type" onchange="onRepeatTypeChange()">
+            <option value="none">なし</option>
+            <option value="daily">毎日</option>
+            <option value="weekly">毎週（曜日指定）</option>
+            <option value="monthly">毎月（日付指定）</option>
+          </select>
+        </div>
+        <div id="repeat-weekly-opts" style="display:none;margin-top:10px;">
+          <div class="repeat-days">
+            <button type="button" class="day-chip" data-day="1" onclick="toggleDayChip(this)">月</button>
+            <button type="button" class="day-chip" data-day="2" onclick="toggleDayChip(this)">火</button>
+            <button type="button" class="day-chip" data-day="3" onclick="toggleDayChip(this)">水</button>
+            <button type="button" class="day-chip" data-day="4" onclick="toggleDayChip(this)">木</button>
+            <button type="button" class="day-chip" data-day="5" onclick="toggleDayChip(this)">金</button>
+            <button type="button" class="day-chip" data-day="6" onclick="toggleDayChip(this)">土</button>
+            <button type="button" class="day-chip" data-day="0" onclick="toggleDayChip(this)">日</button>
+          </div>
+        </div>
+        <div id="repeat-monthly-opts" style="display:none;margin-top:10px;">
+          <input type="number" id="f-repeat-day" min="1" max="31" placeholder="日付（1〜31）" style="width:160px;">
+        </div>
       </div>
       <input type="hidden" id="f-edit-id">
       <button class="btn btn-p btn-w" onclick="saveTask()">
@@ -1231,6 +1263,7 @@ function taskCard(t) {
         <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
         <span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span>
         ${t.isHabit ? `<span class="badge b-habit">🔄 習慣</span>` : t.source === '引き継ぎ' ? `<span class="badge b-handover">📋 引き継ぎ</span>` : `<span class="badge bs">${esc(t.source)}</span>`}
+        ${t.repeat && t.repeat.type !== 'none' ? `<span class="badge" style="background:#E0F7FA;color:#006064;">🔁 ${esc(repeatLabel(t.repeat))}</span>` : ''}
         ${assigneeBadge(t.assignee)}
         ${dlLabel ? `<span class="t-dl ${dlClass}">${dlLabel}</span>` : ''}
       </div>
@@ -1254,6 +1287,7 @@ function openModal(id) {
     <div class="d-row"><span class="d-lbl">緊急度</span><span class="d-val"><span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span></span></div>
     <div class="d-row"><span class="d-lbl">重要度</span><span class="d-val"><span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span></span></div>
     <div class="d-row"><span class="d-lbl">期限</span><span class="d-val ${dlClass}">${esc(dlLabel)}</span></div>
+    ${repeatLabel(t.repeat) ? `<div class="d-row"><span class="d-lbl">繰り返し</span><span class="d-val">🔁 ${esc(repeatLabel(t.repeat))}</span></div>` : ''}
     ${t.assignee ? `<div class="d-row"><span class="d-lbl">担当</span><span class="d-val">${assigneeBadge(t.assignee)}</span></div>` : ''}
     <div class="d-row"><span class="d-lbl">発生元</span><span class="d-val">${esc(t.source)}</span></div>
     ${t.contact ? `<div class="d-row"><span class="d-lbl">連絡先</span><span class="d-val">${esc(t.contact || '')}</span></div>` : ''}
@@ -1291,6 +1325,7 @@ function duplicateTask(id) {
   document.getElementById('f-source').value     = t.source     || '自分';
   document.getElementById('f-contact').value    = t.contact    || '';
   document.getElementById('f-memo').value       = t.memo       || '';
+  setRepeatToForm(t.repeat || { type: 'none' });
   // ② editingId は null のまま
   // ③ モーダルを閉じる
   document.getElementById('modal-overlay').classList.remove('open');
@@ -1313,6 +1348,7 @@ function startEdit(id) {
   document.getElementById('f-source').value  = t.source  || '自分';
   document.getElementById('f-contact').value = t.contact || '';
   document.getElementById('f-memo').value    = t.memo    || '';
+  setRepeatToForm(t.repeat || { type: 'none' });
   nav('add');
 }
 
@@ -1327,6 +1363,99 @@ function resetForm() {
   document.getElementById('f-source').value  = '自分';
   document.getElementById('f-contact').value = '';
   document.getElementById('f-memo').value    = '';
+  setRepeatToForm({ type: 'none' });
+}
+
+// ═══════════════════════════════════════════════
+//  REPEAT HELPERS
+// ═══════════════════════════════════════════════
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function repeatLabel(repeat) {
+  if (!repeat || repeat.type === 'none') return '';
+  const DN = ['日','月','火','水','木','金','土'];
+  if (repeat.type === 'daily') return '毎日';
+  if (repeat.type === 'weekly') {
+    const days = (repeat.days || []).map(d => DN[d]).join('・');
+    return `毎週（${days || '未設定'}）`;
+  }
+  if (repeat.type === 'monthly') return `毎月${repeat.day || '?'}日`;
+  return '';
+}
+
+function nextDeadline(deadline, repeat) {
+  if (!repeat || repeat.type === 'none') return '';
+  const base = deadline ? new Date(deadline + 'T00:00:00') : new Date();
+  if (repeat.type === 'daily') {
+    base.setDate(base.getDate() + 1);
+    return fmtDate(base);
+  }
+  if (repeat.type === 'weekly') {
+    const days = repeat.days || [];
+    if (!days.length) return '';
+    const baseDow = base.getDay();
+    const sorted = [...days].sort((a, b) => a - b);
+    let nextDow = sorted.find(d => d > baseDow);
+    let addDays;
+    if (nextDow !== undefined) {
+      addDays = nextDow - baseDow;
+    } else {
+      nextDow = sorted[0];
+      addDays = 7 - baseDow + nextDow;
+    }
+    base.setDate(base.getDate() + addDays);
+    return fmtDate(base);
+  }
+  if (repeat.type === 'monthly') {
+    const day = repeat.day || 1;
+    return fmtDate(new Date(base.getFullYear(), base.getMonth() + 1, day));
+  }
+  return '';
+}
+
+function onRepeatTypeChange() {
+  const type = document.getElementById('f-repeat-type').value;
+  document.getElementById('repeat-weekly-opts').style.display  = type === 'weekly'  ? '' : 'none';
+  document.getElementById('repeat-monthly-opts').style.display = type === 'monthly' ? '' : 'none';
+}
+
+function toggleDayChip(btn) {
+  btn.classList.toggle('selected');
+}
+
+function getRepeatFromForm() {
+  const type = document.getElementById('f-repeat-type').value;
+  if (type === 'none')    return { type: 'none' };
+  if (type === 'daily')   return { type: 'daily' };
+  if (type === 'weekly') {
+    const days = [];
+    document.querySelectorAll('#repeat-weekly-opts .day-chip.selected').forEach(b => {
+      days.push(parseInt(b.dataset.day));
+    });
+    return { type: 'weekly', days };
+  }
+  if (type === 'monthly') {
+    const day = parseInt(document.getElementById('f-repeat-day').value) || 1;
+    return { type: 'monthly', day };
+  }
+  return { type: 'none' };
+}
+
+function setRepeatToForm(repeat) {
+  const type = (repeat && repeat.type) || 'none';
+  const sel = document.getElementById('f-repeat-type');
+  if (sel) sel.value = type;
+  const wo = document.getElementById('repeat-weekly-opts');
+  const mo = document.getElementById('repeat-monthly-opts');
+  if (wo) wo.style.display  = type === 'weekly'  ? '' : 'none';
+  if (mo) mo.style.display  = type === 'monthly' ? '' : 'none';
+  document.querySelectorAll('#repeat-weekly-opts .day-chip').forEach(b => {
+    b.classList.toggle('selected', (repeat && repeat.days || []).includes(parseInt(b.dataset.day)));
+  });
+  const dayInp = document.getElementById('f-repeat-day');
+  if (dayInp) dayInp.value = (type === 'monthly' && repeat && repeat.day) ? repeat.day : '';
 }
 
 // ═══════════════════════════════════════════════
@@ -1351,6 +1480,9 @@ async function saveTask() {
     status:     id ? (tasks.find(t=>t.id===id)||{}).status || '未完了' : '未完了',
     createdAt:  id ? (tasks.find(t=>t.id===id)||{}).createdAt || now : now,
     completedAt:id ? (tasks.find(t=>t.id===id)||{}).completedAt || null : null,
+    repeat:     getRepeatFromForm(),
+    assignee:   id ? (tasks.find(t=>t.id===id)||{}).assignee || '' : '',
+    isHabit:    id ? (tasks.find(t=>t.id===id)||{}).isHabit  || false : false,
   };
 
   await StorageManager.save(task);
@@ -1367,9 +1499,28 @@ async function toggleDone(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
   const now = new Date().toISOString();
-  t.status = t.status === '完了' ? '未完了' : '完了';
+  const wasDone = t.status === '完了';
+  t.status = wasDone ? '未完了' : '完了';
   t.completedAt = t.status === '完了' ? now : null;
   await StorageManager.save(t);
+
+  if (!wasDone && t.repeat && t.repeat.type !== 'none') {
+    const nextDl = nextDeadline(t.deadline, t.repeat);
+    if (nextDl) {
+      const nextTask = {
+        id: genId(), title: t.title,
+        urgency: t.urgency, importance: t.importance,
+        deadline: nextDl, source: t.source,
+        contact: t.contact || '', memo: t.memo || '',
+        status: '未完了', createdAt: now, completedAt: null,
+        repeat: t.repeat, assignee: t.assignee || '',
+        isHabit: t.isHabit || false,
+      };
+      await StorageManager.save(nextTask);
+      tasks.push(nextTask);
+    }
+  }
+
   showToast(t.status === '完了' ? '完了にしました ✅' : '未完了に戻しました', t.status==='完了'?'ok':'');
   refreshCurrentView();
 }
