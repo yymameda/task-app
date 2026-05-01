@@ -789,6 +789,9 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
       </div>
       <div class="bk-sec">
         <h3>データ管理</h3>
+        <button class="btn btn-s btn-w" onclick="deleteHabitTasks()" style="margin-bottom:10px;">
+          🗑 習慣タスクを全削除
+        </button>
         <button class="btn btn-d btn-w" onclick="clearAllData()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           全データを削除
@@ -1942,6 +1945,17 @@ async function deleteTask(id) {
   tasks = tasks.filter(t => t.id !== id);
   document.getElementById('modal-overlay').classList.remove('open');
   showToast('タスクを削除しました');
+  refreshCurrentView();
+}
+
+async function deleteHabitTasks() {
+  const targets = tasks.filter(t => t.isHabit === true || t.id.startsWith('habit_'));
+  if (!targets.length) { showToast('習慣タスクは見つかりませんでした'); return; }
+  const confirmed = await confirmDialog(`${targets.length}件の習慣タスクを削除します。`, '削除する', true);
+  if (!confirmed) return;
+  for (const t of targets) await StorageManager.remove(t.id);
+  tasks = tasks.filter(t => !(t.isHabit === true || t.id.startsWith('habit_')));
+  showToast(`習慣タスク ${targets.length}件 を削除しました`, 'ok');
   refreshCurrentView();
 }
 
