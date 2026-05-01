@@ -2194,6 +2194,27 @@ async function migrateHabitTasks() {
   if (added > 0) refreshCurrentView();
 }
 
+async function cleanLegacyHabitTasks() {
+  const CLEAN_KEY = 'habit_cleaned_v1';
+  if (localStorage.getItem(CLEAN_KEY)) return;
+
+  // 旧 generateHabitTasks() が生成した ID: "habit_${key}_YYYY-MM-DD"
+  const toDelete = tasks.filter(t => t.id.startsWith('habit_'));
+  console.log(`[habit cleanup] 削除対象: ${toDelete.length}件`,
+    toDelete.map(t => ({ id: t.id, title: t.title })));
+
+  for (const t of toDelete) {
+    await StorageManager.remove(t.id);
+  }
+  tasks = tasks.filter(t => !t.id.startsWith('habit_'));
+
+  localStorage.setItem(CLEAN_KEY, '1');
+  if (toDelete.length > 0) {
+    showToast(`古い習慣タスク ${toDelete.length}件 を整理しました`);
+    refreshCurrentView();
+  }
+}
+
 function watchDateChange() {
   let lastDate = today();
   setInterval(() => {
@@ -2482,6 +2503,7 @@ async function init() {
   await migrateHabitTasks();
   const lastView = localStorage.getItem('last_view') || 'dashboard';
   nav(lastView);
+  await cleanLegacyHabitTasks();
   registerSW();
   watchDateChange();
 
