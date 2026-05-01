@@ -388,6 +388,36 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 /* ── UPCOMING ROW ── */
 .upcoming-date-hdr{font-size:12px;font-weight:700;color:var(--muted);
   margin:10px 0 4px;padding-left:2px;}
+/* ── QUICK CAPTURE ── */
+.qc-btn{
+  width:100%;padding:14px;border:2px dashed var(--border);border-radius:var(--r);
+  background:var(--card);color:var(--primary);cursor:pointer;font-family:inherit;
+  font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;
+  margin-bottom:14px;transition:background .15s,border-color .15s;
+  box-shadow:var(--shadow);
+}
+.qc-btn:active{background:#EEF6FA;border-color:var(--primary);}
+.qc-form{
+  background:var(--card);border-radius:var(--r);padding:14px;
+  box-shadow:var(--shadow);margin-bottom:14px;
+  animation:fadeIn .15s ease;
+}
+.qc-input{
+  width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;
+  font-size:16px;font-family:inherit;color:var(--text);background:#fff;
+  outline:none;transition:border-color .2s;
+}
+.qc-input:focus{border-color:var(--primary);}
+/* ── INBOX ── */
+.inbox-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--card);border-radius:var(--r);padding:12px 16px;
+  box-shadow:var(--shadow);cursor:pointer;margin-top:4px;
+  border-left:4px solid #A0AEC0;
+}
+.inbox-toggle:active{opacity:.8;}
+.inbox-label{font-size:13px;font-weight:700;color:var(--text);}
+.inbox-meta{font-size:12px;color:var(--muted);}
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -434,6 +464,20 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
   <!-- ① DASHBOARD / TODAY -->
   <div class="view active" id="view-dashboard">
     <h1 class="page-title">今日</h1>
+    <!-- クイックキャプチャ -->
+    <button class="qc-btn" id="qc-btn" onclick="toggleQuickCapture()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      今すぐメモ
+    </button>
+    <div class="qc-form" id="qc-form" style="display:none;">
+      <input type="text" id="qc-input" class="qc-input" placeholder="タスクのタイトルを入力…"
+        autocomplete="off" autocorrect="off"
+        onkeydown="if(event.key==='Enter')saveQuickCapture()">
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn btn-s" style="flex:1;" onclick="toggleQuickCapture()">キャンセル</button>
+        <button class="btn btn-p" style="flex:2;" onclick="saveQuickCapture()">追加</button>
+      </div>
+    </div>
     <!-- 次にやること -->
     <div id="next-task-wrap"></div>
     <!-- ミニ統計 -->
@@ -462,6 +506,8 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
       <span class="sec-title">📅 この先3日間</span>
     </div>
     <div id="upcoming-list"></div>
+    <!-- 受信箱 -->
+    <div id="inbox-wrap" style="margin-top:14px;"></div>
   </div>
 
   <!-- ② TASK ADD -->
@@ -1204,6 +1250,52 @@ function switchTab(tab) {
   renderList();
 }
 
+// ═══════════════════════════════════════════════
+//  QUICK CAPTURE
+// ═══════════════════════════════════════════════
+function toggleQuickCapture() {
+  const form = document.getElementById('qc-form');
+  const isOpen = form.style.display !== 'none';
+  form.style.display = isOpen ? 'none' : '';
+  if (!isOpen) {
+    document.getElementById('qc-input').value = '';
+    setTimeout(() => document.getElementById('qc-input').focus(), 60);
+  }
+}
+
+async function saveQuickCapture() {
+  const input = document.getElementById('qc-input');
+  const title = input.value.trim();
+  if (!title) { input.focus(); return; }
+  const now = new Date().toISOString();
+  const task = {
+    id: genId(), title,
+    urgency: '中', importance: '中',
+    deadline: '', source: 'クイックメモ',
+    contact: '', memo: '',
+    status: '未完了', createdAt: now, completedAt: null,
+    repeat: { type: 'none' }, assignee: '', isHabit: false,
+  };
+  await StorageManager.save(task);
+  tasks.push(task);
+  input.value = '';
+  document.getElementById('qc-form').style.display = 'none';
+  showToast('受信箱に追加しました', 'ok');
+  renderDashboard();
+}
+
+function toggleInbox() {
+  const list = document.getElementById('inbox-list');
+  const meta = document.getElementById('inbox-meta');
+  if (!list) return;
+  const open = list.style.display !== 'none';
+  list.style.display = open ? 'none' : '';
+  if (meta) {
+    const n = list.querySelectorAll('.task-item').length;
+    meta.textContent = open ? `${n}件 ▾` : `${n}件 ▴`;
+  }
+}
+
 function switchSettingsTab(tab) {
   document.querySelectorAll('#view-settings .tab-btn').forEach(b => b.classList.remove('active'));
   const btn = document.querySelector(`#view-settings [data-stab="${tab}"]`);
@@ -1277,6 +1369,22 @@ function renderDashboard() {
   } else {
     upcomingEl.innerHTML = `<div class="empty" style="padding:14px 0;">
       <p style="font-size:13px;color:var(--muted);">この先3日間の予定はありません</p></div>`;
+  }
+
+  // 受信箱（クイックメモ・期限未設定）
+  const inbox = active.filter(x => x.source === 'クイックメモ' && !x.deadline);
+  const inboxWrap = document.getElementById('inbox-wrap');
+  if (inbox.length) {
+    inboxWrap.innerHTML = `
+      <div class="inbox-toggle" onclick="toggleInbox()">
+        <span class="inbox-label">📥 受信箱（整理待ち）</span>
+        <span class="inbox-meta" id="inbox-meta">${inbox.length}件 ▾</span>
+      </div>
+      <div id="inbox-list" style="display:none;margin-top:6px;">
+        ${sortTasks(inbox).map(t => taskCard(t)).join('')}
+      </div>`;
+  } else {
+    inboxWrap.innerHTML = '';
   }
 }
 
