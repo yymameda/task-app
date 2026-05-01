@@ -418,6 +418,21 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 .inbox-toggle:active{opacity:.8;}
 .inbox-label{font-size:13px;font-weight:700;color:var(--text);}
 .inbox-meta{font-size:12px;color:var(--muted);}
+/* ── CALENDAR EVENTS ── */
+.cal-event-card{
+  background:#F0F9FF;border-radius:10px;padding:10px 13px;margin-bottom:7px;
+  display:flex;align-items:center;gap:10px;
+  border-left:4px solid var(--primary);
+}
+.cal-event-icon{font-size:15px;flex-shrink:0;}
+.cal-event-body{flex:1;min-width:0;}
+.cal-event-title{font-size:14px;font-weight:600;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cal-event-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.cal-event-days{font-size:11px;font-weight:700;color:var(--primary);
+  flex-shrink:0;white-space:nowrap;padding:2px 7px;background:#DBEAFE;
+  border-radius:20px;}
+.cal-event-days.today{color:#DD6B20;background:#FEF3C7;}
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -506,6 +521,14 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
       <span class="sec-title">📅 この先3日間</span>
     </div>
     <div id="upcoming-list"></div>
+    <!-- カレンダーイベント -->
+    <div id="cal-section" style="display:none;margin-top:14px;">
+      <div class="sec-header" style="margin-bottom:8px;">
+        <span class="sec-title">📅 今後の予定（60日以内）</span>
+        <span id="cal-event-count" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <div id="cal-event-list"></div>
+    </div>
     <!-- 受信箱 -->
     <div id="inbox-wrap" style="margin-top:14px;"></div>
   </div>
@@ -672,6 +695,24 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 
   <!-- ⑦ SETTINGS (AI秘書 + バックアップ) -->
   <div class="view" id="view-settings">
+    <!-- カレンダー連携 -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.5px;
+                  text-transform:uppercase;margin-bottom:12px;">📅 カレンダー連携</div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="fl">iCal URL（GoogleカレンダーのiCal形式URL）</label>
+        <input type="text" id="cal-url-input" placeholder="https://calendar.google.com/calendar/ical/…"
+          style="font-size:13px;">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="btn btn-p" style="flex:2;" onclick="loadCalendar()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.52"/></svg>
+          読み込む
+        </button>
+        <button class="btn btn-s" style="flex:1;" onclick="clearCalendar()">クリア</button>
+      </div>
+      <div id="cal-status" style="font-size:12px;color:var(--muted);min-height:16px;"></div>
+    </div>
     <div class="tabs" style="margin-bottom:16px;">
       <button class="tab-btn active" data-stab="secretary" onclick="switchSettingsTab('secretary')">🤖 AI秘書</button>
       <button class="tab-btn" data-stab="backup" onclick="switchSettingsTab('backup')">💾 バックアップ</button>
@@ -1306,6 +1347,149 @@ function switchSettingsTab(tab) {
 }
 
 // ═══════════════════════════════════════════════
+//  CALENDAR (iCal)
+// ═══════════════════════════════════════════════
+const CAL_LS_URL    = 'cal_ical_url';
+const CAL_LS_EVENTS = 'cal_events';
+const CAL_LS_LAST   = 'cal_last_loaded';
+
+function parseIcalDate(val) {
+  if (!val) return null;
+  const v = val.trim();
+  if (/^\d{8}$/.test(v))   return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+  if (/^\d{8}T/.test(v))   return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+  return null;
+}
+
+function parseIcal(text) {
+  const unfolded = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n[ \t]/g, '');
+  const events = [];
+  const re = /BEGIN:VEVENT\n([\s\S]*?)END:VEVENT/g;
+  let m;
+  while ((m = re.exec(unfolded)) !== null) {
+    const block = m[1];
+    let dtstart = '', summary = '';
+    for (const line of block.split('\n')) {
+      const ci = line.indexOf(':');
+      if (ci < 0) continue;
+      const key = line.slice(0, ci).toUpperCase();
+      const val = line.slice(ci + 1);
+      if (key === 'DTSTART' || key.startsWith('DTSTART;')) dtstart = val;
+      else if (key === 'SUMMARY' || key.startsWith('SUMMARY;')) summary = val;
+    }
+    const date = parseIcalDate(dtstart);
+    if (!date) continue;
+    const title = summary
+      .replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\\\/g, '\\').trim();
+    if (!title) continue;
+    events.push({ date, title });
+  }
+  return events;
+}
+
+async function loadCalendar() {
+  const urlInput = document.getElementById('cal-url-input');
+  const url = urlInput ? urlInput.value.trim() : '';
+  if (!url) { showToast('URLを入力してください', 'err'); return; }
+  const statusEl = document.getElementById('cal-status');
+  if (statusEl) statusEl.textContent = '読み込み中…';
+
+  let text;
+  try {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    text = await r.text();
+  } catch {
+    try {
+      const proxy = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+      const r2 = await fetch(proxy, { cache: 'no-store' });
+      if (!r2.ok) throw new Error('HTTP ' + r2.status);
+      text = await r2.text();
+    } catch (e2) {
+      showToast('取得失敗: ' + e2.message, 'err');
+      if (statusEl) statusEl.textContent = 'エラー: ' + e2.message;
+      return;
+    }
+  }
+
+  const todayStr = today();
+  const d60 = new Date(); d60.setDate(d60.getDate() + 60);
+  const d60Str = fmtDate(d60);
+  const filtered = parseIcal(text)
+    .filter(e => e.date >= todayStr && e.date <= d60Str)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  localStorage.setItem(CAL_LS_URL,    url);
+  localStorage.setItem(CAL_LS_EVENTS, JSON.stringify(filtered));
+  const now = new Date().toISOString();
+  localStorage.setItem(CAL_LS_LAST,   now);
+  if (statusEl) statusEl.textContent = `${filtered.length}件取得 • ${formatDateTimeJP(now)}`;
+  showToast(`${filtered.length}件のイベントを読み込みました`, 'ok');
+  renderDashboard();
+}
+
+function clearCalendar() {
+  localStorage.removeItem(CAL_LS_URL);
+  localStorage.removeItem(CAL_LS_EVENTS);
+  localStorage.removeItem(CAL_LS_LAST);
+  const urlInput = document.getElementById('cal-url-input');
+  if (urlInput) urlInput.value = '';
+  const statusEl = document.getElementById('cal-status');
+  if (statusEl) statusEl.textContent = '';
+  showToast('カレンダー設定をクリアしました');
+  renderDashboard();
+}
+
+function renderCalendarSettings() {
+  const urlInput = document.getElementById('cal-url-input');
+  const statusEl = document.getElementById('cal-status');
+  if (urlInput) urlInput.value = localStorage.getItem(CAL_LS_URL) || '';
+  const last   = localStorage.getItem(CAL_LS_LAST);
+  const events = JSON.parse(localStorage.getItem(CAL_LS_EVENTS) || '[]');
+  if (statusEl) {
+    statusEl.textContent = last
+      ? `${events.length}件取得済み • ${formatDateTimeJP(last)}`
+      : '';
+  }
+}
+
+function renderCalendarSection() {
+  const section = document.getElementById('cal-section');
+  if (!section) return;
+  if (!localStorage.getItem(CAL_LS_URL)) { section.style.display = 'none'; return; }
+
+  const todayStr = today();
+  const d60 = new Date(); d60.setDate(d60.getDate() + 60);
+  const d60Str = fmtDate(d60);
+  const events = JSON.parse(localStorage.getItem(CAL_LS_EVENTS) || '[]')
+    .filter(e => e.date >= todayStr && e.date <= d60Str)
+    .slice(0, 10);
+
+  if (!events.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  const countEl = document.getElementById('cal-event-count');
+  if (countEl) countEl.textContent = `${events.length}件`;
+  const listEl = document.getElementById('cal-event-list');
+  if (listEl) {
+    listEl.innerHTML = events.map(ev => {
+      const diff = daysDiff(todayStr, ev.date);
+      const isToday = diff === 0;
+      const label = isToday ? '今日' : diff === 1 ? '明日' : `あと${diff}日`;
+      return `<div class="cal-event-card">
+        <span class="cal-event-icon">📅</span>
+        <div class="cal-event-body">
+          <div class="cal-event-title">${esc(ev.title)}</div>
+          <div class="cal-event-meta">${formatDateJP(ev.date)}</div>
+        </div>
+        <span class="cal-event-days${isToday ? ' today' : ''}">${esc(label)}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════
 //  RENDER DASHBOARD (今日ビュー)
 // ═══════════════════════════════════════════════
 function renderDashboard() {
@@ -1370,6 +1554,9 @@ function renderDashboard() {
     upcomingEl.innerHTML = `<div class="empty" style="padding:14px 0;">
       <p style="font-size:13px;color:var(--muted);">この先3日間の予定はありません</p></div>`;
   }
+
+  // カレンダーイベント
+  renderCalendarSection();
 
   // 受信箱（クイックメモ・期限未設定）
   const inbox = active.filter(x => x.source === 'クイックメモ' && !x.deadline);
@@ -2081,6 +2268,7 @@ function renderSecretary() {
   document.getElementById('sec-result-panel').style.display = 'none';
   document.getElementById('sec-board-panel').style.display = '';
   renderBoardHistory();
+  renderCalendarSettings();
 }
 
 // ── ① 音声・テキストで送る ───────────────────────
