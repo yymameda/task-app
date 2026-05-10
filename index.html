@@ -59,15 +59,85 @@ body{
 #top-area .qc-btn{margin-bottom:8px;}
 #top-area .mini-stats{margin-bottom:0;}
 
-/* ── TASK GRID (2-column) ── */
-#task-grid{
+/* ── TASK SCROLL AREA ── */
+#task-scroll{
   flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   padding:10px 12px calc(20px + var(--safe-bottom));
-  display:grid;grid-template-columns:1fr 1fr;gap:10px;
-  align-content:start;
 }
-#task-grid .task-item{margin-bottom:0;}
+/* ── ZONE HEADER ── */
+.zone-hdr{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:800;color:var(--muted);
+  letter-spacing:.4px;margin:4px 0 8px;
+}
+.zone-hdr-badge{
+  font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
+}
+/* ── NEAR CARDS (zone①, 1-col list) ── */
+.near-card{
+  background:var(--card);border-radius:var(--r);
+  padding:13px 14px 13px 16px;
+  box-shadow:var(--shadow);margin-bottom:9px;
+  display:flex;align-items:center;gap:11px;
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+  border-left:5px solid transparent;
+}
+.near-card:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.near-card.urg-高{border-left-color:var(--red);}
+.near-card.urg-中{border-left-color:var(--orange);}
+.near-card.urg-低{border-left-color:var(--green);}
+.near-card.done-item{opacity:.45;}
+.near-body{flex:1;min-width:0;}
+.near-title{
+  font-size:16px;font-weight:700;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  margin-bottom:5px;
+}
+.done-item .near-title{text-decoration:line-through;color:var(--muted);}
+.near-badges{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+.near-right{
+  display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+  flex-shrink:0;min-width:58px;text-align:right;
+}
+.near-date{font-size:11px;color:var(--muted);}
+.near-days{
+  font-size:12px;font-weight:800;padding:3px 9px;border-radius:20px;
+  background:#FEF3C7;color:#78350F;white-space:nowrap;
+}
+.near-days.ov{background:#FEE2E2;color:#991B1B;}
+/* ── LATER GRID (zone②, 3-col) ── */
+#zone-later-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;
+}
+.later-card{
+  background:var(--card);border-radius:10px;
+  padding:10px 10px 10px 11px;
+  box-shadow:var(--shadow);
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+  border-left:4px solid transparent;min-width:0;
+}
+.later-card:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.later-card.urg-高{border-left-color:var(--red);}
+.later-card.urg-中{border-left-color:var(--orange);}
+.later-card.urg-低{border-left-color:var(--green);}
+.later-card.done-item{opacity:.45;}
+.later-title{
+  font-size:12px;font-weight:700;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  margin-bottom:4px;
+}
+.done-item .later-title{text-decoration:line-through;color:var(--muted);}
+.later-date{font-size:11px;color:var(--muted);}
+/* ── DONE TOGGLE ── */
+#done-toggle-btn{
+  width:100%;padding:7px;border:1.5px solid var(--border);
+  border-radius:9px;background:transparent;
+  font-size:12px;font-weight:700;color:var(--muted);
+  cursor:pointer;font-family:inherit;
+  margin-top:8px;transition:border-color .15s,color .15s;
+}
+#done-toggle-btn.active{border-color:var(--primary);color:var(--primary);}
 
 /* ── GLOBAL HEADER ── */
 #glb-header{
@@ -447,7 +517,7 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 
 /* ── LANDSCAPE ── */
 @media (orientation: landscape) {
-  #task-grid { grid-template-columns: 1fr 1fr 1fr; }
+  #zone-later-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
   #top-area { padding: 8px 14px 6px; }
   #top-area .qc-btn { padding: 10px 14px; }
 }
@@ -500,8 +570,18 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
           <div class="mini-stat-label">未完了</div>
         </div>
       </div>
+      <button id="done-toggle-btn" onclick="toggleShowDone()">完了済みを表示</button>
     </div>
-    <div id="task-grid"></div>
+    <div id="task-scroll">
+      <div id="zone-near"></div>
+      <div id="zone-later">
+        <div id="zone-later-hdr" class="zone-hdr" style="display:none;">
+          <span>それ以降</span>
+          <span class="zone-hdr-badge" id="zone-later-count" style="background:#E0F2FE;color:#0C4A6E;"></span>
+        </div>
+        <div id="zone-later-grid"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ② TASK ADD -->
@@ -911,6 +991,7 @@ const HABIT_DEFINITIONS = [
 // ═══════════════════════════════════════════════
 let tasks = [];
 let currentView = 'dashboard';
+let showDone = false;
 let currentTab  = 'today';
 let editingId       = null;
 let pwdResolve      = null;
@@ -1132,6 +1213,16 @@ function nav(view) {
 
 function toggleSettingsView() {
   nav(currentView === 'settings' ? 'main' : 'settings');
+}
+
+function toggleShowDone() {
+  showDone = !showDone;
+  const btn = document.getElementById('done-toggle-btn');
+  if (btn) {
+    btn.textContent = showDone ? '完了済みを非表示' : '完了済みを表示';
+    btn.classList.toggle('active', showDone);
+  }
+  renderMain();
 }
 
 // ═══════════════════════════════════════════════
@@ -1416,7 +1507,7 @@ function renderMain() {
   const d3Str = fmtDate(d3);
   const active = tasks.filter(x => x.status !== '完了');
 
-  // ミニ統計
+  // ミニ統計（常に未完了ベース）
   const todayCount = active.filter(x => x.deadline && x.deadline <= todayStr).length;
   const nearCount  = active.filter(x => x.deadline && x.deadline > todayStr && x.deadline <= d3Str).length;
   const tdEl = document.getElementById('stat-today');
@@ -1426,14 +1517,46 @@ function renderMain() {
   if (nrEl) nrEl.textContent = nearCount;
   if (ttEl) ttEl.textContent = active.length;
 
-  // タスクグリッド
-  const el = document.getElementById('task-grid');
-  if (!el) return;
-  if (!active.length) {
-    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ei">🎉</div><p>未完了タスクはありません</p></div>`;
-    return;
+  // 表示対象（showDone=trueなら完了済みも含む）
+  const displayed = showDone ? tasks : active;
+  const nearTasks  = sortTasks(displayed.filter(x => x.deadline && x.deadline <= d3Str));
+  const laterTasks = sortTasks(displayed.filter(x => !x.deadline || x.deadline > d3Str));
+
+  // ゾーン① 今日・直近
+  const zoneNear = document.getElementById('zone-near');
+  if (zoneNear) {
+    if (!nearTasks.length) {
+      zoneNear.innerHTML = '';
+    } else {
+      const cnt = active.filter(x => x.deadline && x.deadline <= d3Str).length;
+      zoneNear.innerHTML =
+        `<div class="zone-hdr"><span>今日・直近</span><span class="zone-hdr-badge" style="background:#FEE2E2;color:#991B1B;">${cnt}件</span></div>` +
+        nearTasks.map(t => nearCard(t)).join('');
+    }
   }
-  el.innerHTML = sortTasks(active).map(t => taskCard(t)).join('');
+
+  // ゾーン② それ以降
+  const laterGrid = document.getElementById('zone-later-grid');
+  const laterHdr  = document.getElementById('zone-later-hdr');
+  if (laterGrid) {
+    if (!laterTasks.length) {
+      laterGrid.innerHTML = '';
+      if (laterHdr) laterHdr.style.display = 'none';
+    } else {
+      if (laterHdr) {
+        const cnt = active.filter(x => !x.deadline || x.deadline > d3Str).length;
+        const countEl = document.getElementById('zone-later-count');
+        if (countEl) countEl.textContent = cnt + '件';
+        laterHdr.style.display = 'flex';
+      }
+      laterGrid.innerHTML = laterTasks.map(t => laterCard(t)).join('');
+    }
+  }
+
+  // 空状態
+  if (!displayed.length && zoneNear) {
+    zoneNear.innerHTML = `<div class="empty"><div class="ei">🎉</div><p>未完了タスクはありません</p></div>`;
+  }
 }
 
 function renderDashboard() { renderMain(); }
@@ -1541,6 +1664,44 @@ function taskCard(t) {
         ${dlLabel ? `<span class="t-dl ${dlClass}">${dlLabel}</span>` : ''}
       </div>
     </div>
+  </div>`;
+}
+
+function nearCard(t) {
+  const todayStr = today();
+  const isDone = t.status === '完了';
+  const diff = t.deadline ? daysDiff(todayStr, t.deadline) : null;
+  let daysLabel = '', daysClass = '';
+  if (diff !== null) {
+    if (diff < 0)       { daysLabel = `${Math.abs(diff)}日超過`; daysClass = 'ov'; }
+    else if (diff === 0){ daysLabel = '今日';                     daysClass = 'ov'; }
+    else                { daysLabel = `あと${diff}日`; }
+  }
+  const dateStr = t.deadline ? formatDateJP(t.deadline) : '';
+  return `<div class="near-card urg-${esc(t.urgency)} ${isDone?'done-item':''}" onclick="openModal('${esc(t.id)}')">
+    <div class="t-check ${isDone?'checked':''}" onclick="event.stopPropagation();toggleDone('${esc(t.id)}')"></div>
+    <div class="near-body">
+      <div class="near-title">${esc(t.title)}</div>
+      <div class="near-badges">
+        <span class="badge bu-${esc(t.urgency)}">緊急${esc(t.urgency)}</span>
+        <span class="badge bi-${esc(t.importance)}">重要${esc(t.importance)}</span>
+        ${t.isHabit ? `<span class="badge b-habit">🔄 習慣</span>` : ''}
+        ${assigneeBadge(t.assignee)}
+      </div>
+    </div>
+    <div class="near-right">
+      ${dateStr ? `<div class="near-date">${dateStr}</div>` : ''}
+      ${daysLabel ? `<div class="near-days ${daysClass}">${daysLabel}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function laterCard(t) {
+  const isDone = t.status === '完了';
+  const dateStr = t.deadline ? formatDateJP(t.deadline) : '期日なし';
+  return `<div class="later-card urg-${esc(t.urgency)} ${isDone?'done-item':''}" onclick="openModal('${esc(t.id)}')">
+    <div class="later-title">${esc(t.title)}</div>
+    <div class="later-date">${dateStr}</div>
   </div>`;
 }
 
