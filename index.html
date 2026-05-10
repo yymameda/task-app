@@ -14,7 +14,7 @@
   --primary: #2D7D9A;
   --primary-dark: #1E5A70;
   --primary-light: #3D9DBF;
-  --sidebar-w: 64px;
+  --hdr-h: 60px;
   --bg: #F0F4F8;
   --card: #FFFFFF;
   --text: #1A2B3C;
@@ -32,62 +32,69 @@ html,body{height:100%;overflow:hidden;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
   background:var(--bg);color:var(--text);
-  display:flex;height:100vh;height:100dvh;
+  display:flex;flex-direction:column;height:100vh;height:100dvh;
   overflow:hidden;
 }
 
-/* ── SIDEBAR ── */
-#sidebar{
-  width:var(--sidebar-w);min-width:var(--sidebar-w);
-  background:linear-gradient(180deg,#1E5A70 0%,#2D7D9A 100%);
-  display:flex;flex-direction:column;align-items:center;
-  padding:16px 0 calc(16px + var(--safe-bottom)) 0;gap:6px;
-  z-index:100;flex-shrink:0;
-}
-.sb-logo{
-  width:42px;height:42px;background:rgba(255,255,255,0.2);border-radius:11px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;margin-bottom:10px;flex-shrink:0;
-}
-.nav-btn{
-  width:50px;height:52px;border:none;background:transparent;border-radius:12px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  cursor:pointer;color:rgba(255,255,255,0.65);transition:background .2s,color .2s;
-  gap:3px;padding:0;flex-shrink:0;
-}
-.nav-btn:active{background:rgba(255,255,255,0.15);}
-.nav-btn.active{background:rgba(255,255,255,0.22);color:#fff;}
-.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.nav-btn span{font-size:9px;font-weight:700;letter-spacing:.3px;line-height:1;}
-
 /* ── MAIN ── */
 #main{
-  flex:1;overflow-y:auto;overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  padding:0 20px calc(32px + var(--safe-bottom)) 20px;
-  min-width:0;
+  flex:1;overflow:hidden;position:relative;min-height:0;
 }
-.view{display:none;animation:fadeIn .2s ease;}
-.view.active{display:block;}
+.view{display:none;animation:fadeIn .2s ease;position:absolute;inset:0;}
+.view.active{display:block;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+#view-main{flex-direction:column;}
+#view-main.active{display:flex;overflow:hidden;}
+#view-settings.active,#view-add.active{
+  padding:16px 20px calc(32px + var(--safe-bottom));
+}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-
-/* ── PAGE TITLE（グローバルヘッダーに移管） ── */
 .page-title{display:none;}
+#view-add .page-title{display:block;font-size:17px;font-weight:800;padding:10px 0 16px;}
+
+/* ── TOP AREA (quick capture + mini stats) ── */
+#top-area{
+  flex-shrink:0;padding:10px 14px 8px;
+  background:var(--bg);border-bottom:1px solid var(--border);
+}
+#top-area .qc-btn{margin-bottom:8px;}
+#top-area .mini-stats{margin-bottom:0;}
+
+/* ── TASK GRID (2-column) ── */
+#task-grid{
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding:10px 12px calc(20px + var(--safe-bottom));
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  align-content:start;
+}
+#task-grid .task-item{margin-bottom:0;}
 
 /* ── GLOBAL HEADER ── */
 #glb-header{
-  position:sticky;top:0;background:var(--bg);z-index:50;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:20px 0 12px;margin-bottom:8px;
+  flex-shrink:0;height:var(--hdr-h);background:var(--bg);z-index:100;
+  display:flex;align-items:center;gap:10px;
+  padding:0 12px 0 14px;border-bottom:1px solid var(--border);
 }
-#glb-title{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* ── SEARCH WRAP (inline in header) ── */
+#back-btn{
+  width:40px;height:40px;min-width:40px;border:none;background:transparent;
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--primary);font-size:24px;
+  border-radius:10px;flex-shrink:0;transition:background .15s;line-height:1;
+}
+#back-btn:active{background:rgba(45,125,154,.1);}
+#settings-btn{
+  width:44px;height:44px;min-width:44px;border:none;background:transparent;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:22px;border-radius:11px;
+  flex-shrink:0;transition:background .15s;
+}
+#settings-btn:active{background:rgba(0,0,0,.06);}
+/* ── SEARCH WRAP ── */
 #glb-search-wrap{
-  flex:1;max-width:340px;display:flex;align-items:center;gap:8px;
+  flex:1;display:flex;align-items:center;gap:8px;
   background:var(--card);border:2px solid transparent;
-  border-radius:14px;padding:0 12px;height:48px;
-  box-shadow:var(--shadow);margin-left:14px;
-  transition:border-color .2s;
+  border-radius:14px;padding:0 12px;height:44px;
+  box-shadow:var(--shadow);transition:border-color .2s;
 }
 #glb-search-wrap:focus-within{border-color:var(--primary);}
 #glb-search-icon{font-size:19px;opacity:.5;flex-shrink:0;pointer-events:none;}
@@ -105,7 +112,7 @@ body{
 /* ── SEARCH OVERLAY (results, positioned below header via JS) ── */
 #search-overlay{
   display:none;position:fixed;
-  left:var(--sidebar-w);right:0;bottom:0;
+  left:0;right:0;bottom:0;
   background:var(--bg);z-index:400;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:12px 20px calc(32px + var(--safe-bottom)) 20px;
@@ -440,123 +447,61 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
 
 /* ── LANDSCAPE ── */
 @media (orientation: landscape) {
-  #sidebar {
-    padding: 8px 0 calc(8px + var(--safe-bottom)) 0;
-    gap: 4px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  .sb-logo {
-    width: 36px; height: 36px;
-    font-size: 18px; margin-bottom: 4px;
-  }
-  .nav-btn {
-    height: 44px; min-height: 44px;
-  }
-  #glb-header { padding: 10px 0 8px; }
-  .view {
-    max-width: 900px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  #search-overlay {
-    padding: 8px 20px calc(16px + var(--safe-bottom)) 20px;
-  }
+  #task-grid { grid-template-columns: 1fr 1fr 1fr; }
+  #top-area { padding: 8px 14px 6px; }
+  #top-area .qc-btn { padding: 10px 14px; }
 }
 </style>
 </head>
 <body>
 
-<!-- SIDEBAR -->
-<nav id="sidebar">
-  <div class="sb-logo">📋</div>
-  <button class="nav-btn active" data-view="dashboard" onclick="nav('dashboard')">
-    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span>今日</span>
-  </button>
-  <button class="nav-btn" data-view="add" onclick="nav('add')">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    <span>追加</span>
-  </button>
-  <button class="nav-btn" data-view="list" onclick="nav('list')">
-    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
-    <span>一覧</span>
-  </button>
-  <button class="nav-btn" data-view="settings" onclick="nav('settings')">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    <span>設定</span>
-  </button>
-</nav>
-
 <!-- MAIN -->
 <main id="main">
 
   <!-- GLOBAL HEADER -->
-  <div id="glb-header">
-    <span id="glb-title">AI秘書</span>
+  <header id="glb-header">
+    <button id="back-btn" onclick="nav('main')" aria-label="戻る">‹</button>
     <div id="glb-search-wrap">
       <span id="glb-search-icon">🔍</span>
       <input type="text" id="search-input" placeholder="検索..."
         autocorrect="off" autocapitalize="none" autocomplete="off">
       <button id="search-clear-btn" onclick="clearSearch()" aria-label="クリア">✕</button>
     </div>
-  </div>
+    <button id="settings-btn" onclick="toggleSettingsView()" aria-label="設定">⚙️</button>
+  </header>
 
-  <!-- ① DASHBOARD / TODAY -->
-  <div class="view active" id="view-dashboard">
-    <h1 class="page-title">今日</h1>
-    <!-- クイックキャプチャ -->
-    <button class="qc-btn" id="qc-btn" onclick="toggleQuickCapture()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      今すぐメモ
-    </button>
-    <div class="qc-form" id="qc-form" style="display:none;">
-      <input type="text" id="qc-input" class="qc-input" placeholder="タスクのタイトルを入力…"
-        autocomplete="off" autocorrect="off"
-        onkeydown="if(event.key==='Enter')saveQuickCapture()">
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="btn btn-s" style="flex:1;" onclick="toggleQuickCapture()">キャンセル</button>
-        <button class="btn btn-p" style="flex:2;" onclick="saveQuickCapture()">追加</button>
+  <!-- ① MAIN VIEW (quick capture + mini stats + 2-col task grid) -->
+  <div class="view active" id="view-main">
+    <div id="top-area">
+      <button class="qc-btn" id="qc-btn" onclick="toggleQuickCapture()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        今すぐメモ
+      </button>
+      <div class="qc-form" id="qc-form" style="display:none;">
+        <input type="text" id="qc-input" class="qc-input" placeholder="タスクのタイトルを入力…"
+          autocomplete="off" autocorrect="off"
+          onkeydown="if(event.key==='Enter')saveQuickCapture()">
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-s" style="flex:1;" onclick="toggleQuickCapture()">キャンセル</button>
+          <button class="btn btn-p" style="flex:2;" onclick="saveQuickCapture()">追加</button>
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-stat-num red" id="stat-today">0</div>
+          <div class="mini-stat-label">今日締切</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-num" id="stat-near">0</div>
+          <div class="mini-stat-label">直近3日</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-num" id="stat-total">0</div>
+          <div class="mini-stat-label">未完了</div>
+        </div>
       </div>
     </div>
-    <!-- 次にやること -->
-    <div id="next-task-wrap"></div>
-    <!-- ミニ統計 -->
-    <div class="mini-stats">
-      <div class="mini-stat">
-        <div class="mini-stat-num red" id="stat-today">0</div>
-        <div class="mini-stat-label">今日締切</div>
-      </div>
-      <div class="mini-stat">
-        <div class="mini-stat-num" id="stat-week">0</div>
-        <div class="mini-stat-label">今週締切</div>
-      </div>
-      <div class="mini-stat">
-        <div class="mini-stat-num" id="stat-total">0</div>
-        <div class="mini-stat-label">未完了</div>
-      </div>
-    </div>
-    <!-- 今日の締切 -->
-    <div class="sec-header" style="margin-bottom:8px;">
-      <span class="sec-title">⏰ 今日の締切</span>
-      <span id="today-count" style="font-size:12px;color:var(--muted)"></span>
-    </div>
-    <div id="today-list"></div>
-    <!-- この先3日間 -->
-    <div class="sec-header" style="margin-top:14px;margin-bottom:8px;">
-      <span class="sec-title">📅 この先3日間</span>
-    </div>
-    <div id="upcoming-list"></div>
-    <!-- カレンダーイベント -->
-    <div id="cal-section" style="display:none;margin-top:14px;">
-      <div class="sec-header" style="margin-bottom:8px;">
-        <span class="sec-title">📅 今後の予定（60日以内）</span>
-        <span id="cal-event-count" style="font-size:12px;color:var(--muted);"></span>
-      </div>
-      <div id="cal-event-list"></div>
-    </div>
-    <!-- 受信箱 -->
-    <div id="inbox-wrap" style="margin-top:14px;"></div>
+    <div id="task-grid"></div>
   </div>
 
   <!-- ② TASK ADD -->
@@ -648,78 +593,7 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
     </div>
   </div>
 
-  <!-- ③ TASK LIST -->
-  <div class="view" id="view-list">
-    <h1 class="page-title">タスク一覧</h1>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <div class="tabs" style="flex:1;margin-bottom:0;">
-        <button class="tab-btn active" data-tab="today" onclick="switchTab('today')">今日</button>
-        <button class="tab-btn" data-tab="week" onclick="switchTab('week')">今週</button>
-        <button class="tab-btn" data-tab="future" onclick="switchTab('future')">いつか</button>
-        <button class="tab-btn" data-tab="done" onclick="switchTab('done')">完了</button>
-      </div>
-      <button onclick="nav('wall')" title="壁紙モード"
-        style="flex-shrink:0;width:42px;height:42px;border:none;background:var(--card);
-               border-radius:11px;cursor:pointer;font-size:18px;box-shadow:var(--shadow);
-               display:flex;align-items:center;justify-content:center;">🕐</button>
-    </div>
-    <div id="list-container"></div>
-  </div>
-
-  <!-- ④ COMPLETED -->
-  <div class="view" id="view-done">
-    <h1 class="page-title">完了済み</h1>
-    <div id="done-list"></div>
-  </div>
-
-  <!-- ⑤ WALL MODE -->
-  <div class="view" id="view-wall">
-    <div id="wall-overdue" class="wall-section">
-      <div class="wall-sec-header">
-        <span class="wall-sec-badge" style="background:#991B1B;color:#fff;">⚠ 期限超過</span>
-        <span class="wall-sec-count" id="wall-overdue-count"></span>
-      </div>
-      <div id="wall-overdue-list"></div>
-    </div>
-    <div id="wall-today" class="wall-section">
-      <div class="wall-sec-header">
-        <span class="wall-sec-badge" style="background:#DD6B20;color:#fff;">⏰ 今日</span>
-        <span class="wall-sec-count" id="wall-today-count"></span>
-      </div>
-      <div id="wall-today-list"></div>
-    </div>
-    <div id="wall-tomorrow" class="wall-section">
-      <div class="wall-sec-header">
-        <span class="wall-sec-badge" style="background:#2D7D9A;color:#fff;">📅 明日</span>
-        <span class="wall-sec-count" id="wall-tomorrow-count"></span>
-      </div>
-      <div id="wall-tomorrow-list"></div>
-    </div>
-    <div id="wall-week" class="wall-section">
-      <div class="wall-sec-header">
-        <span class="wall-sec-badge" style="background:#4A5568;color:#fff;">📋 今週</span>
-        <span class="wall-sec-count" id="wall-week-count"></span>
-      </div>
-      <div id="wall-week-list"></div>
-    </div>
-    <div id="wall-future" class="wall-section">
-      <div class="wall-sec-header">
-        <span class="wall-sec-badge" style="background:#A0AEC0;color:#fff;">📌 来週以降</span>
-        <span class="wall-sec-count" id="wall-future-count"></span>
-      </div>
-      <div id="wall-future-list"></div>
-    </div>
-    <div id="wall-someday" class="wall-section">
-      <div class="wall-sec-header">
-        <span class="wall-sec-badge" style="background:#718096;color:#fff;">🗂 いつか</span>
-        <span class="wall-sec-count" id="wall-someday-count"></span>
-      </div>
-      <div id="wall-someday-list"></div>
-    </div>
-    <div id="wall-footer" onclick="nav('add')">タップして追加 →</div>
-  </div>
-
-  <!-- ⑦ SETTINGS (AI秘書 + バックアップ) -->
+  <!-- ③ SETTINGS (AI秘書 + バックアップ) -->
   <div class="view" id="view-settings">
     <!-- カレンダー連携 -->
     <div class="card" style="margin-bottom:16px;">
@@ -1127,8 +1001,7 @@ function showToast(msg, type='') {
 //  GLOBAL HEADER TITLE
 // ═══════════════════════════════════════════════
 const _VIEW_TITLES = {
-  dashboard:'今日', list:'タスク一覧',
-  wall:'壁紙モード', settings:'設定',
+  main:'タスク', settings:'設定',
 };
 
 function setGlbTitle(title) {
@@ -1225,37 +1098,40 @@ function performSearch() {
 function nav(view) {
   // エイリアス変換
   if (view === 'secretary' || view === 'backup') view = 'settings';
-  if (view === 'done') { nav('list'); switchTab('done'); return; }
+  if (['done','list','wall','dashboard'].includes(view)) view = 'main';
 
   if (_wakeLock) { _wakeLock.release().catch(() => {}); _wakeLock = null; }
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const viewEl = document.getElementById('view-' + view);
   if (viewEl) viewEl.classList.add('active');
-  const navBtn = document.querySelector(`[data-view="${view}"]`);
-  if (navBtn) navBtn.classList.add('active');
-  // 壁紙は一覧ボタンをアクティブに
-  if (view === 'wall') {
-    const lb = document.querySelector('[data-view="list"]');
-    if (lb) lb.classList.add('active');
-  }
+
   currentView = view;
-  const saveView = (view === 'add') ? 'dashboard' : view;
+  const saveView = (view === 'add') ? 'main' : view;
   if (IS_STANDALONE) localStorage.setItem('last_view', saveView);
-  let glbTitle = _VIEW_TITLES[view] || '';
+
+  // ヘッダーボタン表示切り替え
+  const backBtn = document.getElementById('back-btn');
+  const settBtn = document.getElementById('settings-btn');
+  if (backBtn) backBtn.style.display = (view !== 'main') ? 'flex' : 'none';
+  if (settBtn) settBtn.style.display = (view === 'main') ? 'flex' : 'none';
+
+  // フォームタイトル更新
   if (view === 'add') {
-    glbTitle = editingId ? 'タスクを編集' : isDuplicate ? 'タスクを追加（複製）' : 'タスクを追加';
+    const ft = document.getElementById('form-title');
+    if (ft) ft.textContent = editingId ? 'タスクを編集' : isDuplicate ? 'タスクを追加（複製）' : 'タスクを追加';
   }
-  setGlbTitle(glbTitle);
-  if (view === 'dashboard') renderDashboard();
-  if (view === 'list')      renderList();
-  if (view === 'wall')      { renderWall(); acquireWakeLock(); }
-  if (view === 'settings')  renderSecretary();
+
+  if (view === 'main')     renderMain();
+  if (view === 'settings') renderSecretary();
   if (view === 'add' && !editingId) {
     if (isDuplicate) { isDuplicate = false; }
     else { resetForm(); }
   }
+}
+
+function toggleSettingsView() {
+  nav(currentView === 'settings' ? 'main' : 'settings');
 }
 
 // ═══════════════════════════════════════════════
@@ -1364,7 +1240,7 @@ async function saveQuickCapture() {
   input.value = '';
   document.getElementById('qc-form').style.display = 'none';
   showToast('受信箱に追加しました', 'ok');
-  renderDashboard();
+  renderMain();
 }
 
 function toggleInbox() {
@@ -1469,7 +1345,7 @@ async function loadCalendar() {
   localStorage.setItem(CAL_LS_LAST,   now);
   if (statusEl) statusEl.textContent = `${filtered.length}件取得 • ${formatDateTimeJP(now)}`;
   showToast(`${filtered.length}件のイベントを読み込みました`, 'ok');
-  renderDashboard();
+  if (currentView === 'main') renderMain();
 }
 
 function clearCalendar() {
@@ -1481,7 +1357,7 @@ function clearCalendar() {
   const statusEl = document.getElementById('cal-status');
   if (statusEl) statusEl.textContent = '';
   showToast('カレンダー設定をクリアしました');
-  renderDashboard();
+  if (currentView === 'main') renderMain();
 }
 
 function renderCalendarSettings() {
@@ -1532,90 +1408,35 @@ function renderCalendarSection() {
 }
 
 // ═══════════════════════════════════════════════
-//  RENDER DASHBOARD (今日ビュー)
+//  RENDER MAIN (2列グリッド)
 // ═══════════════════════════════════════════════
-function renderDashboard() {
-  const todayStr = today(), we = weekEnd();
-  const active = tasks.filter(x => x.status !== '完了');
-  const todayTasks = active.filter(x => x.deadline && x.deadline <= todayStr);
-  const weekTasks  = active.filter(x => x.deadline && x.deadline > todayStr && x.deadline <= we);
-
-  // ミニ統計
-  document.getElementById('stat-today').textContent = todayTasks.length;
-  document.getElementById('stat-week').textContent  = weekTasks.length;
-  document.getElementById('stat-total').textContent = active.length;
-
-  // 次にやること（緊急度×重要度×期限で自動選出）
-  const sorted = sortTasks(active);
-  const nextWrap = document.getElementById('next-task-wrap');
-  if (sorted.length) {
-    const nx = sorted[0];
-    const dlBadge = nx.deadline
-      ? `<span class="next-task-badge">${esc(deadlineLabel(nx.deadline))}</span>` : '';
-    nextWrap.innerHTML = `<div class="next-task-card" onclick="openModal('${esc(nx.id)}')">
-      <div class="next-task-label">▶ 次にやること</div>
-      <div class="next-task-title">${esc(nx.title)}</div>
-      <div class="next-task-meta">
-        <span class="next-task-badge">緊急${esc(nx.urgency)}</span>
-        <span class="next-task-badge">重要${esc(nx.importance)}</span>
-        ${dlBadge}
-      </div>
-    </div>`;
-  } else {
-    nextWrap.innerHTML = `<div class="next-task-card" style="cursor:default;opacity:.75;">
-      <div class="next-task-label">▶ 次にやること</div>
-      <div class="next-task-title" style="font-size:16px;">🎉 未完了タスクはありません</div>
-    </div>`;
-  }
-
-  // 今日の締切
-  const todayEl = document.getElementById('today-list');
-  const tcEl    = document.getElementById('today-count');
-  if (todayTasks.length) {
-    tcEl.textContent  = `${todayTasks.length}件`;
-    todayEl.innerHTML = sortTasks(todayTasks).map(t => taskCard(t)).join('');
-  } else {
-    tcEl.textContent  = '';
-    todayEl.innerHTML = `<div class="empty" style="padding:18px 0 8px;">
-      <p style="font-size:14px;color:var(--muted);">今日締切のタスクはありません</p></div>`;
-  }
-
-  // この先3日間
+function renderMain() {
+  const todayStr = today();
   const d3 = new Date(); d3.setDate(d3.getDate() + 3);
   const d3Str = fmtDate(d3);
-  const upcoming = active.filter(x => x.deadline && x.deadline > todayStr && x.deadline <= d3Str);
-  const upcomingEl = document.getElementById('upcoming-list');
-  if (upcoming.length) {
-    const byDate = {};
-    upcoming.forEach(t => { (byDate[t.deadline] = byDate[t.deadline] || []).push(t); });
-    upcomingEl.innerHTML = Object.keys(byDate).sort().map(date =>
-      `<div><div class="upcoming-date-hdr">${formatDateJP(date)}</div>
-       ${sortTasks(byDate[date]).map(t => taskCard(t)).join('')}</div>`
-    ).join('');
-  } else {
-    upcomingEl.innerHTML = `<div class="empty" style="padding:14px 0;">
-      <p style="font-size:13px;color:var(--muted);">この先3日間の予定はありません</p></div>`;
-  }
+  const active = tasks.filter(x => x.status !== '完了');
 
-  // カレンダーイベント
-  renderCalendarSection();
+  // ミニ統計
+  const todayCount = active.filter(x => x.deadline && x.deadline <= todayStr).length;
+  const nearCount  = active.filter(x => x.deadline && x.deadline > todayStr && x.deadline <= d3Str).length;
+  const tdEl = document.getElementById('stat-today');
+  const nrEl = document.getElementById('stat-near');
+  const ttEl = document.getElementById('stat-total');
+  if (tdEl) tdEl.textContent = todayCount;
+  if (nrEl) nrEl.textContent = nearCount;
+  if (ttEl) ttEl.textContent = active.length;
 
-  // 受信箱（クイックメモ・期限未設定）
-  const inbox = active.filter(x => x.source === 'クイックメモ' && !x.deadline);
-  const inboxWrap = document.getElementById('inbox-wrap');
-  if (inbox.length) {
-    inboxWrap.innerHTML = `
-      <div class="inbox-toggle" onclick="toggleInbox()">
-        <span class="inbox-label">📥 受信箱（整理待ち）</span>
-        <span class="inbox-meta" id="inbox-meta">${inbox.length}件 ▾</span>
-      </div>
-      <div id="inbox-list" style="display:none;margin-top:6px;">
-        ${sortTasks(inbox).map(t => taskCard(t)).join('')}
-      </div>`;
-  } else {
-    inboxWrap.innerHTML = '';
+  // タスクグリッド
+  const el = document.getElementById('task-grid');
+  if (!el) return;
+  if (!active.length) {
+    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ei">🎉</div><p>未完了タスクはありません</p></div>`;
+    return;
   }
+  el.innerHTML = sortTasks(active).map(t => taskCard(t)).join('');
 }
+
+function renderDashboard() { renderMain(); }
 
 // ═══════════════════════════════════════════════
 //  RENDER LIST
@@ -1944,7 +1765,7 @@ async function saveTask() {
   showToast(id ? 'タスクを更新しました' : 'タスクを追加しました', 'ok');
   editingId = null;
   resetForm();
-  nav('list');
+  nav('main');
 }
 
 async function toggleDone(id) {
@@ -2004,7 +1825,7 @@ async function clearAllData() {
   await StorageManager.clear();
   tasks = [];
   showToast('全データを削除しました', 'err');
-  renderDashboard();
+  renderMain();
 }
 
 // Simple confirm using the password dialog as confirm dialog
@@ -2055,10 +1876,8 @@ function confirmPwd() {
 }
 
 function refreshCurrentView() {
-  if      (currentView === 'dashboard') renderDashboard();
-  else if (currentView === 'list')      renderList();
-  else if (currentView === 'wall')      renderWall();
-  else if (currentView === 'settings')  renderSecretary();
+  if      (currentView === 'main')     renderMain();
+  else if (currentView === 'settings') renderSecretary();
 }
 
 // ═══════════════════════════════════════════════
@@ -2122,7 +1941,7 @@ async function importJSON(event) {
       if (idx >= 0) tasks[idx] = t; else tasks.push(t);
     }
     showToast(`${imported.length}件をインポートしました`, 'ok');
-    renderDashboard();
+    renderMain();
   } catch(e) {
     showToast('JSONの読み込みに失敗しました', 'err');
   }
@@ -2148,7 +1967,7 @@ async function importEncrypted(event) {
       if (idx >= 0) tasks[idx] = t; else tasks.push(t);
     }
     showToast(`${imported.length}件をインポートしました 🔓`, 'ok');
-    renderDashboard();
+    renderMain();
   } catch(e) {
     showToast('復号に失敗しました。パスワードを確認してください', 'err');
   }
@@ -2437,7 +2256,7 @@ async function applyBoardContent() {
   document.getElementById('sec-board-input').value = '';
   renderBoardHistory();
   showToast(`タスク${added}件を追加しました ✅`, 'ok');
-  if (added > 0) renderDashboard();
+  if (added > 0) renderMain();
 }
 
 function parseClaudeReply(text) {
@@ -2571,7 +2390,7 @@ async function init() {
   await StorageManager.initDB();
   tasks = await StorageManager.getAll();
   await migrateHabitTasks();
-  const lastView = IS_STANDALONE ? (localStorage.getItem('last_view') || 'dashboard') : 'dashboard';
+  const lastView = IS_STANDALONE ? (localStorage.getItem('last_view') || 'main') : 'main';
   nav(lastView);
   await cleanLegacyHabitTasks();
   registerSW();
