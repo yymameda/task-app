@@ -551,6 +551,26 @@ textarea{min-height:90px;resize:vertical;line-height:1.5;}
         <input type="text" id="qc-input" class="qc-input" placeholder="タスクのタイトルを入力…"
           autocomplete="off" autocorrect="off"
           onkeydown="if(event.key==='Enter')saveQuickCapture()">
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <input type="date" id="qc-deadline" class="qc-input" style="flex:1;">
+          <div class="sel-wrap" style="flex:1;">
+            <select id="qc-urgency">
+              <option value="高">🔴 緊急高</option>
+              <option value="中" selected>🟡 緊急中</option>
+              <option value="低">🟢 緊急低</option>
+            </select>
+          </div>
+          <div class="sel-wrap" style="flex:1;">
+            <select id="qc-source">
+              <option value="クイックメモ" selected>クイックメモ</option>
+              <option value="自分">自分</option>
+              <option value="児童">児童</option>
+              <option value="保護者">保護者</option>
+              <option value="管理職">管理職</option>
+              <option value="引き継ぎ">引き継ぎ</option>
+            </select>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;margin-top:10px;">
           <button class="btn btn-s" style="flex:1;" onclick="toggleQuickCapture()">キャンセル</button>
           <button class="btn btn-p" style="flex:2;" onclick="saveQuickCapture()">追加</button>
@@ -1320,8 +1340,10 @@ async function saveQuickCapture() {
   const now = new Date().toISOString();
   const task = {
     id: genId(), title,
-    urgency: '中', importance: '中',
-    deadline: '', source: 'クイックメモ',
+    urgency: document.getElementById('qc-urgency').value,
+    importance: '中',
+    deadline: document.getElementById('qc-deadline').value,
+    source: document.getElementById('qc-source').value,
     contact: '', memo: '',
     status: '未完了', createdAt: now, completedAt: null,
     repeat: { type: 'none' }, assignee: '', isHabit: false,
@@ -1329,6 +1351,9 @@ async function saveQuickCapture() {
   await StorageManager.save(task);
   tasks.push(task);
   input.value = '';
+  document.getElementById('qc-deadline').value = '';
+  document.getElementById('qc-urgency').value = '中';
+  document.getElementById('qc-source').value = 'クイックメモ';
   document.getElementById('qc-form').style.display = 'none';
   showToast('受信箱に追加しました', 'ok');
   renderMain();
@@ -2230,17 +2255,13 @@ async function migrateHabitTasks() {
 async function cleanLegacyHabitTasks(force = false) {
   const CLEAN_KEY = 'habit_cleaned_v2';
   const flagVal = localStorage.getItem(CLEAN_KEY);
-  console.log(`[habit cleanup] フラグ '${CLEAN_KEY}': ${JSON.stringify(flagVal)} | tasks総数: ${tasks.length}`);
 
   if (!force && flagVal) {
-    console.log('[habit cleanup] フラグあり → スキップ。強制実行はコンソールで forceCleanHabits() を実行');
     return;
   }
 
   // 削除条件: 旧IDプレフィックス OR isHabit:true
   const toDelete = tasks.filter(t => t.id.startsWith('habit_') || t.isHabit === true);
-  console.log(`[habit cleanup] 削除対象: ${toDelete.length}件`,
-    toDelete.map(t => ({ id: t.id, title: t.title, isHabit: t.isHabit })));
 
   for (const t of toDelete) {
     await StorageManager.remove(t.id);
@@ -2248,7 +2269,6 @@ async function cleanLegacyHabitTasks(force = false) {
   tasks = tasks.filter(t => !(t.id.startsWith('habit_') || t.isHabit === true));
 
   localStorage.setItem(CLEAN_KEY, '1');
-  console.log(`[habit cleanup] 完了: ${toDelete.length}件削除 / 残り: ${tasks.length}件`);
 
   if (toDelete.length > 0) {
     showToast(`古い習慣タスク ${toDelete.length}件 を整理しました`);
@@ -2269,7 +2289,7 @@ function watchDateChange() {
   let lastDate = today();
   setInterval(() => {
     const now = today();
-    if (now !== lastDate) { lastDate = now; }
+    if (now !== lastDate) { lastDate = now; renderMain(); }
   }, 60000);
 }
 
