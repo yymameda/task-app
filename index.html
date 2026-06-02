@@ -1061,7 +1061,16 @@ function impScore(i)  { return i==='高'?0:i==='中'?1:2; }
 function totalScore(t){ return urgScore(t.urgency)*3 + impScore(t.importance); }
 
 function sortTasks(arr) {
-  return [...arr].sort((a, b) => totalScore(a) - totalScore(b));
+  return [...arr].sort((a, b) => {
+    const aHasDl = !!a.deadline;
+    const bHasDl = !!b.deadline;
+    if (aHasDl !== bHasDl) return aHasDl ? -1 : 1;
+    if (aHasDl && bHasDl) {
+      const dlCmp = a.deadline.localeCompare(b.deadline);
+      if (dlCmp !== 0) return dlCmp;
+    }
+    return totalScore(a) - totalScore(b);
+  });
 }
 
 function deadlineClass(dl) {
